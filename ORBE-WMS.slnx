@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ORBE-WMS.API/ORBE-WMS.API.csproj" />
+  <Project Path="ORBE-WMS.AppHost/ORBE-WMS.AppHost.csproj" />
+  <Project Path="ORBE-WMS.ServiceDefaults/ORBE-WMS.ServiceDefaults.csproj" />
+  <Project Path="ORBE-WMS.WebApp/ORBE-WMS.WebApp.csproj" />
+</Solution>

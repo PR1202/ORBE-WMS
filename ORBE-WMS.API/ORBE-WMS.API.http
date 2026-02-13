@@ -1,0 +1,6 @@
+@ORBE_WMS.API_HostAddress = http://localhost:5116
+
+GET {{ORBE_WMS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
