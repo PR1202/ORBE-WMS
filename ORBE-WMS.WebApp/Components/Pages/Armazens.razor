@@ -1,0 +1,165 @@
+@page "/armazens"
+@attribute [Authorize(Roles = "Admin")]
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Components.Dialogs
+
+@inject ApplicationDbContext Db
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Armazéns - ORBE WMS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Armazéns</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CriarArmazem">
+        Novo Armazém
+    </MudButton>
+</MudStack>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudDataGrid Items="@_armazens" Dense="true" Hover="true" Striped="true" Bordered="true"
+                 FixedHeader="true" Height="calc(100vh - 230px)"
+                 Filterable="true" FilterMode="DataGridFilterMode.Simple"
+                 QuickFilter="@_quickFilter">
+        <ToolBarContent>
+            <MudTextField @bind-Value="_searchString" Placeholder="Buscar armazém..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium" Class="mt-0" Immediate="true" />
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.Nome" Title="Nome" />
+            <PropertyColumn Property="x => x.CNPJ" Title="CNPJ" />
+            <PropertyColumn Property="x => x.Endereco" Title="Endereço" />
+            <TemplateColumn Title="Status" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @if (context.Item.Ativo)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Ativo</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small">Inativo</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.DataCriacao" Title="Criado em" Format="dd/MM/yyyy" />
+            <TemplateColumn Title="Ações" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="Editar">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="() => EditarArmazem(context.Item)" />
+                        </MudTooltip>
+                        <MudTooltip Text="@(context.Item.Ativo ? "Desativar" : "Ativar")">
+                            <MudIconButton Icon="@(context.Item.Ativo ? Icons.Material.Filled.ToggleOn : Icons.Material.Filled.ToggleOff)"
+                                           Size="Size.Small"
+                                           Color="@(context.Item.Ativo ? Color.Success : Color.Default)"
+                                           OnClick="() => ToggleAtivo(context.Item)" />
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <NoRecordsContent>
+            <MudText>Nenhum armazém encontrado.</MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+@code {
+    private List<Armazem> _armazens = [];
+    private bool _carregando = true;
+    private string? _searchString;
+
+    private Func<Armazem, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+        if (x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.CNPJ is not null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.Endereco is not null && x.Endereco.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        _carregando = true;
+        _armazens = await Db.Armazens.AsNoTracking().OrderBy(a => a.Nome).ToListAsync();
+        _carregando = false;
+    }
+
+    private async Task CriarArmazem()
+    {
+        var dialog = await DialogService.ShowAsync<ArmazemDialog>("Novo Armazém",
+            new DialogParameters(),
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await CarregarDados();
+            Snackbar.Add("Armazém criado com sucesso!", Severity.Success);
+        }
+    }
+
+    private async Task EditarArmazem(Armazem armazem)
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(ArmazemDialog.ArmazemId), armazem.Id }
+        };
+
+        var dialog = await DialogService.ShowAsync<ArmazemDialog>("Editar Armazém", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await CarregarDados();
+            Snackbar.Add("Armazém atualizado com sucesso!", Severity.Success);
+        }
+    }
+
+    private async Task ToggleAtivo(Armazem armazem)
+    {
+        var acao = armazem.Ativo ? "desativar" : "ativar";
+        var confirmed = await DialogService.ShowMessageBox(
+            "Confirmar",
+            $"Deseja {acao} o armazém \"{armazem.Nome}\"?",
+            yesText: "Sim", cancelText: "Cancelar");
+
+        if (confirmed == true)
+        {
+            var entity = await Db.Armazens.FindAsync(armazem.Id);
+            if (entity is not null)
+            {
+                entity.Ativo = !entity.Ativo;
+                await Db.SaveChangesAsync();
+                Db.ChangeTracker.Clear();
+                await CarregarDados();
+                Snackbar.Add($"Armazém {(entity.Ativo ? "ativado" : "desativado")} com sucesso!", Severity.Success);
+            }
+        }
+    }
+}

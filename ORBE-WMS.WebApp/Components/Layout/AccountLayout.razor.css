@@ -1,0 +1,14 @@
+.account-layout {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 50%, #1A237E 100%);
+    padding: 1rem;
+}
+
+::deep .account-card {
+    width: 100%;
+    max-width: 440px;
+    border-radius: 12px;
+}

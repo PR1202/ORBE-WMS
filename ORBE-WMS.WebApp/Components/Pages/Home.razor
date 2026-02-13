@@ -1,7 +1,319 @@
-﻿@page "/"
+@page "/"
+@attribute [Authorize]
 
-<PageTitle>Home</PageTitle>
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
 
-<h1>Hello, world!</h1>
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
-Welcome to your new app.
+<PageTitle>Dashboard - ORBE WMS</PageTitle>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    @* === CABEÇALHO === *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+        <div>
+            <MudText Typo="Typo.h4">Bem-vindo, @_nomeUsuario</MudText>
+            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))
+            </MudText>
+        </div>
+        <MudSpacer />
+        @if (_isAdmin)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Filled.Shield">Administrador</MudChip>
+        }
+    </MudStack>
+
+    @* === CARDS KPI === *@
+    <MudGrid Spacing="4" Class="mb-6">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2" Style="border-left: 4px solid var(--mud-palette-primary); border-radius: 8px;">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.Warehouse" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h4" Style="font-weight: 700;">@_totalArmazens</MudText>
+                        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                            @(_isAdmin ? "Armazéns" : "Meus Armazéns")
+                        </MudText>
+                    </div>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2" Style="border-left: 4px solid var(--mud-palette-secondary); border-radius: 8px;">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h4" Style="font-weight: 700;">@_totalDepositantes</MudText>
+                        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">Depositantes</MudText>
+                    </div>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        @if (_isAdmin)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="2" Style="border-left: 4px solid var(--mud-palette-info); border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudAvatar Color="Color.Info" Variant="Variant.Outlined" Size="Size.Large">
+                            <MudIcon Icon="@Icons.Material.Filled.People" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Style="font-weight: 700;">@_totalUsuarios</MudText>
+                            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">Usuários</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="2" Style="border-left: 4px solid var(--mud-palette-warning); border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudAvatar Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Large">
+                            <MudIcon Icon="@Icons.Material.Filled.WarningAmber" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Style="font-weight: 700;">@_depositantesInativos</MudText>
+                            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">Dep. Inativos</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+        else
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="2" Style="border-left: 4px solid var(--mud-palette-info); border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudAvatar Color="Color.Info" Variant="Variant.Outlined" Size="Size.Large">
+                            <MudIcon Icon="@Icons.Material.Filled.Badge" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Style="font-weight: 700;">@_meuPapel</MudText>
+                            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">Meu Papel</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="4">
+        @* === MEUS ARMAZÉNS === *@
+        <MudItem xs="12" md="@(_isAdmin ? 6 : 12)">
+            <MudPaper Class="pa-4" Elevation="2" Style="border-radius: 8px;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Warehouse" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">@(_isAdmin ? "Armazéns Recentes" : "Meus Armazéns")</MudText>
+                </MudStack>
+
+                @if (_armazens.Any())
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var a in _armazens)
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Primary">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                    <div>
+                                        <MudText Typo="Typo.body1">@a.Nome</MudText>
+                                        @if (a.CNPJ is not null)
+                                        {
+                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">@a.CNPJ</MudText>
+                                        }
+                                    </div>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(a.Ativo ? Color.Success : Color.Default)">
+                                        @(a.Ativo ? "Ativo" : "Inativo")
+                                    </MudChip>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                        Nenhum armazém vinculado. Solicite ao administrador.
+                    </MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* === ACESSO RÁPIDO (Admin) ou DEPOSITANTES RECENTES (Usuário) === *@
+        <MudItem xs="12" md="6">
+            @if (_isAdmin)
+            {
+                <MudPaper Class="pa-4" Elevation="2" Style="border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Secondary" />
+                        <MudText Typo="Typo.h6">Acesso Rápido</MudText>
+                    </MudStack>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Add" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("armazens"))">
+                                Novo Armazém
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.PersonAdd" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("admin/usuarios"))">
+                                Novo Usuário
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Business" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("depositantes"))">
+                                Depositantes
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.People" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("admin/usuarios"))">
+                                Usuários
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+            else if (_armazens.Any())
+            {
+                <MudPaper Class="pa-4" Elevation="2" Style="border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Secondary" />
+                        <MudText Typo="Typo.h6">Acesso Rápido</MudText>
+                    </MudStack>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Business" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("depositantes"))">
+                                Depositantes
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.MoveToInbox" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("recebimento"))">
+                                Recebimento
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Inventory2" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("estoque"))">
+                                Estoque
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.LocalShipping" Class="py-3"
+                                       OnClick="@(() => Nav.NavigateTo("expedicao"))">
+                                Expedição
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool _carregando = true;
+    private bool _isAdmin;
+    private string? _userId;
+    private string _nomeUsuario = "";
+    private string _meuPapel = "-";
+
+    private int _totalArmazens;
+    private int _totalDepositantes;
+    private int _totalUsuarios;
+    private int _depositantesInativos;
+
+    private List<Armazem> _armazens = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        _isAdmin = user.IsInRole("Admin");
+        _nomeUsuario = user.Identity?.Name ?? "Usuário";
+
+        // Buscar nome real do usuário
+        if (_userId is not null)
+        {
+            var appUser = await Db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _userId);
+            if (appUser is not null)
+            {
+                _nomeUsuario = appUser.Nome;
+            }
+        }
+
+        if (_isAdmin)
+        {
+            _totalArmazens = await Db.Armazens.AsNoTracking().CountAsync(a => a.Ativo);
+            _totalDepositantes = await Db.Depositantes.AsNoTracking().CountAsync(d => d.Ativo);
+            _depositantesInativos = await Db.Depositantes.AsNoTracking().CountAsync(d => !d.Ativo);
+            _totalUsuarios = await Db.Users.AsNoTracking().CountAsync();
+            _armazens = await Db.Armazens.AsNoTracking()
+                .OrderByDescending(a => a.DataCriacao)
+                .Take(5)
+                .ToListAsync();
+        }
+        else
+        {
+            var meusArmazemIds = await Db.UsuarioArmazens.AsNoTracking()
+                .Where(ua => ua.UsuarioId == _userId)
+                .Select(ua => ua.ArmazemId)
+                .ToListAsync();
+
+            _totalArmazens = meusArmazemIds.Count;
+            _totalDepositantes = await Db.Depositantes.AsNoTracking()
+                .CountAsync(d => d.Ativo && meusArmazemIds.Contains(d.ArmazemId));
+
+            _armazens = await Db.Armazens.AsNoTracking()
+                .Where(a => meusArmazemIds.Contains(a.Id))
+                .OrderBy(a => a.Nome)
+                .ToListAsync();
+
+            // Buscar papel do usuário (pegar o mais relevante)
+            var papeis = await Db.UsuarioArmazens.AsNoTracking()
+                .Where(ua => ua.UsuarioId == _userId)
+                .Select(ua => ua.Role)
+                .Distinct()
+                .ToListAsync();
+            _meuPapel = papeis.Count switch
+            {
+                0 => "Sem acesso",
+                1 => papeis[0],
+                _ => string.Join(" / ", papeis)
+            };
+        }
+
+        _carregando = false;
+    }
+}

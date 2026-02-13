@@ -1,0 +1,142 @@
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+
+@inject ApplicationDbContext Db
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warehouse" Class="mr-2" />
+            Armazéns de @UsuarioNome
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!_armazens.Any())
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Nenhum armazém cadastrado. Crie um armazém antes de vincular usuários.
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3" Style="color: var(--mud-palette-text-secondary);">
+                Selecione os armazéns e defina o papel do usuário em cada um.
+            </MudText>
+
+            <MudStack Spacing="2">
+                @foreach (var item in _vinculos)
+                {
+                    <MudPaper Elevation="0" Class="pa-3" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                            <MudCheckBox @bind-Value="item.Vinculado" Color="Color.Primary" Dense="true" />
+                            <MudText Typo="Typo.body1" Style="flex: 1;">@item.ArmazemNome</MudText>
+                            <MudSelect T="string" @bind-Value="item.Role" Label="Papel"
+                                       Variant="Variant.Outlined" Dense="true"
+                                       Disabled="@(!item.Vinculado)"
+                                       Style="width: 180px;">
+                                <MudSelectItem T="string" Value="@("Gerente")">Gerente</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Operador")">Operador</MudSelectItem>
+                            </MudSelect>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Variant="Variant.Text">Cancelar</MudButton>
+        <MudButton OnClick="Salvar" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_salvando || _carregando)">
+            @if (_salvando)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Salvar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string UsuarioId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string UsuarioNome { get; set; } = string.Empty;
+
+    private List<Armazem> _armazens = [];
+    private List<VinculoItem> _vinculos = [];
+    private bool _carregando = true;
+    private bool _salvando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _armazens = await Db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
+
+        var vinculosExistentes = await Db.UsuarioArmazens.AsNoTracking()
+            .Where(ua => ua.UsuarioId == UsuarioId)
+            .ToListAsync();
+
+        _vinculos = _armazens.Select(a =>
+        {
+            var existente = vinculosExistentes.FirstOrDefault(v => v.ArmazemId == a.Id);
+            return new VinculoItem
+            {
+                ArmazemId = a.Id,
+                ArmazemNome = a.Nome,
+                Vinculado = existente is not null,
+                Role = existente?.Role ?? "Operador"
+            };
+        }).ToList();
+
+        _carregando = false;
+    }
+
+    private async Task Salvar()
+    {
+        _salvando = true;
+        try
+        {
+            // Remove todos os vínculos existentes
+            var existentes = await Db.UsuarioArmazens
+                .Where(ua => ua.UsuarioId == UsuarioId)
+                .ToListAsync();
+            Db.UsuarioArmazens.RemoveRange(existentes);
+
+            // Adiciona os novos vínculos selecionados
+            var novos = _vinculos
+                .Where(v => v.Vinculado)
+                .Select(v => new UsuarioArmazem
+                {
+                    UsuarioId = UsuarioId,
+                    ArmazemId = v.ArmazemId,
+                    Role = v.Role
+                });
+            Db.UsuarioArmazens.AddRange(novos);
+
+            await Db.SaveChangesAsync();
+            Db.ChangeTracker.Clear();
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private class VinculoItem
+    {
+        public int ArmazemId { get; set; }
+        public string ArmazemNome { get; set; } = string.Empty;
+        public bool Vinculado { get; set; }
+        public string Role { get; set; } = "Operador";
+    }
+}

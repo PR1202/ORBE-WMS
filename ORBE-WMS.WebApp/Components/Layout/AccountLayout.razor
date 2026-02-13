@@ -1,0 +1,41 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="account-layout">
+    <MudPaper Elevation="4" Class="pa-8 account-card">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h5" Color="Color.Primary">
+                <b>ORBE</b> WMS
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                Sistema de Gerenciamento de Armazém
+            </MudText>
+        </MudStack>
+        <MudDivider Class="mb-6" />
+        @Body
+    </MudPaper>
+</div>
+
+@code {
+    private MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1565C0",
+            Secondary = "#00897B",
+            Background = "#E8EAF6"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
+            }
+        }
+    };
+}

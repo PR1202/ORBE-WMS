@@ -1,0 +1,136 @@
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+
+@inject ApplicationDbContext Db
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warehouse" Class="mr-2" />
+            @(ArmazemId.HasValue ? "Editar Armazém" : "Novo Armazém")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValido">
+            <MudTextField @bind-Value="_model.Nome"
+                          Label="Nome"
+                          Required="true"
+                          RequiredError="Nome é obrigatório"
+                          MaxLength="200"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="_model.CNPJ"
+                          Label="CNPJ"
+                          MaxLength="18"
+                          Placeholder="00.000.000/0000-00"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="_model.Endereco"
+                          Label="Endereço"
+                          MaxLength="500"
+                          Lines="2"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Variant="Variant.Text">Cancelar</MudButton>
+        <MudButton OnClick="Salvar" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(!_formValido || _salvando)">
+            @if (_salvando)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Salvar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int? ArmazemId { get; set; }
+
+    private MudForm _form = null!;
+    private bool _formValido;
+    private bool _salvando;
+    private ArmazemModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ArmazemId.HasValue)
+        {
+            var armazem = await Db.Armazens.AsNoTracking().FirstOrDefaultAsync(a => a.Id == ArmazemId.Value);
+            if (armazem is not null)
+            {
+                _model = new ArmazemModel
+                {
+                    Nome = armazem.Nome,
+                    CNPJ = armazem.CNPJ,
+                    Endereco = armazem.Endereco
+                };
+            }
+        }
+    }
+
+    private async Task Salvar()
+    {
+        await _form.Validate();
+        if (!_formValido) return;
+
+        _salvando = true;
+        try
+        {
+            if (ArmazemId.HasValue)
+            {
+                var armazem = await Db.Armazens.FindAsync(ArmazemId.Value);
+                if (armazem is not null)
+                {
+                    armazem.Nome = _model.Nome;
+                    armazem.CNPJ = _model.CNPJ;
+                    armazem.Endereco = _model.Endereco;
+                    await Db.SaveChangesAsync();
+                    Db.ChangeTracker.Clear();
+                }
+            }
+            else
+            {
+                var armazem = new Armazem
+                {
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    Endereco = _model.Endereco
+                };
+                Db.Armazens.Add(armazem);
+                await Db.SaveChangesAsync();
+                Db.ChangeTracker.Clear();
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private class ArmazemModel
+    {
+        [Required(ErrorMessage = "Nome é obrigatório")]
+        [MaxLength(200)]
+        public string Nome { get; set; } = string.Empty;
+
+        [MaxLength(18)]
+        public string? CNPJ { get; set; }
+
+        [MaxLength(500)]
+        public string? Endereco { get; set; }
+    }
+}

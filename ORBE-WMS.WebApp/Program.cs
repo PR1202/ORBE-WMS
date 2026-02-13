@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using MudBlazor.Services;
 using ORBE_WMS.WebApp.Components;
 using ORBE_WMS.WebApp.Components.Account;
 using ORBE_WMS.WebApp.Data;
@@ -41,6 +42,9 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 // Multi-tenant: serviço que mantém o armazém ativo na sessão
 builder.Services.AddScoped<TenantService>();
+
+// MudBlazor
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 
