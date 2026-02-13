@@ -1,12 +1,8 @@
-using ORBE_WMS.API.Data;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
 // Add services to the container.
-builder.AddSqlServerDbContext<ApiDbContext>("orbeDb");
-
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

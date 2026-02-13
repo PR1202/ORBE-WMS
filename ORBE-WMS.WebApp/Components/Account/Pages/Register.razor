@@ -1,8 +1,10 @@
-﻿@page "/Account/Register"
+@page "/Account/Register"
+@attribute [Authorize(Roles = "Admin")]
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
 @using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using ORBE_WMS.WebApp.Data
@@ -15,18 +17,23 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Registrar Usuário</PageTitle>
 
-<h1>Register</h1>
+<h1>Registrar Novo Usuário</h1>
 
 <div class="row">
     <div class="col-lg-6">
         <StatusMessage Message="@Message" />
         <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
+            <h2>Criar nova conta de usuário.</h2>
             <hr />
             <ValidationSummary class="text-danger" role="alert" />
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.Nome" id="Input.Nome" class="form-control" aria-required="true" placeholder="Nome completo" />
+                <label for="Input.Nome">Nome</label>
+                <ValidationMessage For="() => Input.Nome" class="text-danger" />
+            </div>
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                 <label for="Input.Email">Email</label>
@@ -47,9 +54,9 @@
     </div>
     <div class="col-lg-4 col-lg-offset-2">
         <section>
-            <h3>Use another service to register.</h3>
+            <h3>Informações</h3>
             <hr />
-            <ExternalLoginPicker />
+            <p>O usuário será criado com o email já confirmado. Ele poderá fazer login imediatamente com as credenciais definidas.</p>
         </section>
     </div>
 </div>
@@ -73,6 +80,7 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
+        user.Nome = Input.Nome;
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -85,28 +93,13 @@
             return;
         }
 
-        Logger.LogInformation("User created a new account with password.");
+        Logger.LogInformation("Admin criou uma nova conta de usuário para {Email}.", Input.Email);
 
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+        // Admin criando o usuário: confirma o email automaticamente
+        var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        await UserManager.ConfirmEmailAsync(user, token);
 
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-        else
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false);
-            RedirectManager.RedirectTo(ReturnUrl);
-        }
+        RedirectManager.RedirectTo("Account/Register", new() { ["statusMessage"] = $"Usuário {Input.Email} criado com sucesso." });
     }
 
     private ApplicationUser CreateUser()
@@ -134,19 +127,24 @@
     private sealed class InputModel
     {
         [Required]
+        [MaxLength(200)]
+        [Display(Name = "Nome")]
+        public string Nome { get; set; } = "";
+
+        [Required]
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
 
         [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [StringLength(100, ErrorMessage = "A {0} deve ter no mínimo {2} e no máximo {1} caracteres.", MinimumLength = 6)]
         [DataType(DataType.Password)]
-        [Display(Name = "Password")]
+        [Display(Name = "Senha")]
         public string Password { get; set; } = "";
 
         [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Display(Name = "Confirmar Senha")]
+        [Compare("Password", ErrorMessage = "A senha e a confirmação não coincidem.")]
         public string ConfirmPassword { get; set; } = "";
     }
 }

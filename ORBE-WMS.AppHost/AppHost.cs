@@ -24,9 +24,7 @@ var llama = ollama.AddModel("llama3.2"); // Adiciona o modelo Llama 3.2
 
 var wms = builder
                 .AddProject<Projects.ORBE_WMS_API>("wms")
-                .WithReference(orbeDb)
                 .WithReference(llama)
-                .WaitFor(orbeDb)
                 .WaitFor(llama);
 
 builder.AddProject<Projects.ORBE_WMS_WebApp>("webapp")

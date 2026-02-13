@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using ORBE_WMS.WebApp.Components;
 using ORBE_WMS.WebApp.Components.Account;
 using ORBE_WMS.WebApp.Data;
+using ORBE_WMS.WebApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,13 +32,20 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.SignIn.RequireConfirmedAccount = true;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+// Multi-tenant: serviço que mantém o armazém ativo na sessão
+builder.Services.AddScoped<TenantService>();
+
 var app = builder.Build();
+
+// Seed: criar role Admin e usuário admin padrão
+await SeedData.InicializarAsync(app.Services);
 
 app.MapDefaultEndpoints();
 

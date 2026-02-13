@@ -6,11 +6,28 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ORBE_WMS.WebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateIdentitySchema : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Armazens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Nome = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CNPJ = table.Column<string>(type: "nvarchar(18)", maxLength: 18, nullable: true),
+                    Endereco = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Ativo = table.Column<bool>(type: "bit", nullable: false),
+                    DataCriacao = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Armazens", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -30,6 +47,8 @@ namespace ORBE_WMS.WebApp.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Nome = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Ativo = table.Column<bool>(type: "bit", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -48,6 +67,31 @@ namespace ORBE_WMS.WebApp.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Depositantes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ArmazemId = table.Column<int>(type: "int", nullable: false),
+                    Nome = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CNPJ = table.Column<string>(type: "nvarchar(18)", maxLength: 18, nullable: true),
+                    CodigoExterno = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Endereco = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Ativo = table.Column<bool>(type: "bit", nullable: false),
+                    DataCriacao = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Depositantes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Depositantes_Armazens_ArmazemId",
+                        column: x => x.ArmazemId,
+                        principalTable: "Armazens",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -175,6 +219,43 @@ namespace ORBE_WMS.WebApp.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UsuarioArmazens",
+                columns: table => new
+                {
+                    UsuarioId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ArmazemId = table.Column<int>(type: "int", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UsuarioArmazens", x => new { x.UsuarioId, x.ArmazemId });
+                    table.ForeignKey(
+                        name: "FK_UsuarioArmazens_Armazens_ArmazemId",
+                        column: x => x.ArmazemId,
+                        principalTable: "Armazens",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UsuarioArmazens_AspNetUsers_UsuarioId",
+                        column: x => x.UsuarioId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.InsertData(
+                table: "AspNetRoles",
+                columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
+                values: new object[] { "role-admin", "00000000-0000-0000-0000-000000000001", "Admin", "ADMIN" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Armazens_CNPJ",
+                table: "Armazens",
+                column: "CNPJ",
+                unique: true,
+                filter: "[CNPJ] IS NOT NULL");
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -218,6 +299,21 @@ namespace ORBE_WMS.WebApp.Migrations
                 column: "NormalizedUserName",
                 unique: true,
                 filter: "[NormalizedUserName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Depositantes_ArmazemId",
+                table: "Depositantes",
+                column: "ArmazemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Depositantes_CNPJ",
+                table: "Depositantes",
+                column: "CNPJ");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UsuarioArmazens_ArmazemId",
+                table: "UsuarioArmazens",
+                column: "ArmazemId");
         }
 
         /// <inheritdoc />
@@ -242,7 +338,16 @@ namespace ORBE_WMS.WebApp.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Depositantes");
+
+            migrationBuilder.DropTable(
+                name: "UsuarioArmazens");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Armazens");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
