@@ -1,9 +1,12 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 
+@using System.Text.Json
 @using ORBE_WMS.WebApp.Services
+@using Microsoft.AspNetCore.WebUtilities
 @inject TabService TabService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 <div class="page">
     <div class="sidebar">
@@ -72,21 +75,127 @@
 
 @code {
     private bool _isAccountPage;
+    private bool _initialized;
+
+    // Mapeamento componentKey <-> (título, ícone, tipo)
+    private static readonly Dictionary<string, (string Title, string Icon, Type Component)> TabMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["dashboard"]    = ("Dashboard",    "bi-house-door-fill",    typeof(Pages.Home)),
+        ["recebimento"]  = ("Recebimento",  "bi-box-arrow-in-right", typeof(Pages.Recebimento)),
+        ["estoque"]      = ("Estoque",      "bi-box",                typeof(Pages.Estoque)),
+        ["separacao"]    = ("Separação",    "bi-scissors",           typeof(Pages.Separacao)),
+        ["expedicao"]    = ("Expedição",    "bi-truck",              typeof(Pages.Expedicao)),
+        ["depositantes"] = ("Depositantes", "bi-building",           typeof(Pages.Depositantes)),
+        ["armazens"]     = ("Armazéns",     "bi-building-add",       typeof(Pages.Armazens)),
+        ["usuarios"]     = ("Usuários",     "bi-people-fill",        typeof(Pages.Usuarios)),
+    };
+
+    // Mapeamento reverso: Type -> key
+    private static readonly Dictionary<Type, string> TypeToKey = TabMap.ToDictionary(kv => kv.Value.Component, kv => kv.Key);
 
     protected override void OnInitialized()
     {
         TabService.OnTabsChanged += HandleTabsChanged;
         NavigationManager.LocationChanged += OnLocationChanged;
         UpdateAccountPageFlag();
+    }
 
-        // Abrir Dashboard como aba fixa na primeira vez
-        if (!TabService.Tabs.Any())
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isAccountPage)
         {
-            TabService.OpenPinnedTab(
-                "Dashboard",
-                "bi-house-door-fill",
-                typeof(Pages.Home));
+            _initialized = true;
+            await RestoreTabsAsync();
         }
+    }
+
+    private async Task RestoreTabsAsync()
+    {
+        // 1. Tentar restaurar abas do sessionStorage
+        var json = await JS.InvokeAsync<string>("tabStorage.load");
+        var restored = false;
+
+        if (!string.IsNullOrEmpty(json) && json != "[]")
+        {
+            try
+            {
+                var savedTabs = JsonSerializer.Deserialize<List<SavedTab>>(json);
+                if (savedTabs is { Count: > 0 })
+                {
+                    // Limpar abas existentes e restaurar
+                    TabService.ClearAll();
+                    
+                    foreach (var st in savedTabs)
+                    {
+                        if (TabMap.TryGetValue(st.Key, out var info))
+                        {
+                            if (st.Pinned)
+                                TabService.OpenPinnedTab(info.Title, info.Icon, info.Component);
+                            else
+                                TabService.OpenTab(info.Title, info.Icon, info.Component);
+                        }
+                    }
+
+                    // Ativar a aba que estava ativa
+                    var activeKey = savedTabs.FirstOrDefault(s => s.Active)?.Key;
+                    if (activeKey != null && TabMap.TryGetValue(activeKey, out var activeInfo))
+                    {
+                        var activeTab = TabService.Tabs.FirstOrDefault(t => t.ComponentType == activeInfo.Component);
+                        if (activeTab != null)
+                            TabService.ActivateTab(activeTab.Id);
+                    }
+
+                    restored = true;
+                }
+            }
+            catch { /* JSON inválido, ignorar */ }
+        }
+
+        // 2. Se não restaurou do sessionStorage, criar Dashboard padrão
+        if (!restored && !TabService.Tabs.Any())
+        {
+            TabService.OpenPinnedTab("Dashboard", "bi-house-door-fill", typeof(Pages.Home));
+        }
+
+        // 3. Verificar query parameter ?tab=xxx e abrir/ativar a aba correspondente
+        OpenTabFromQuery();
+
+        // 4. Salvar estado atual
+        await SaveTabsAsync();
+
+        StateHasChanged();
+    }
+
+    private void OpenTabFromQuery()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("tab", out var tabValue))
+        {
+            var tabKey = tabValue.ToString();
+            if (TabMap.TryGetValue(tabKey, out var info))
+            {
+                TabService.OpenTab(info.Title, info.Icon, info.Component);
+            }
+        }
+    }
+
+    private async Task SaveTabsAsync()
+    {
+        if (!_initialized) return;
+
+        try
+        {
+            var savedTabs = TabService.Tabs.Select(t => new SavedTab
+            {
+                Key = TypeToKey.GetValueOrDefault(t.ComponentType, ""),
+                Pinned = t.IsPinned,
+                Active = t.IsActive
+            }).Where(s => !string.IsNullOrEmpty(s.Key)).ToList();
+
+            var json = JsonSerializer.Serialize(savedTabs);
+            await JS.InvokeVoidAsync("tabStorage.save", json);
+        }
+        catch { /* Ignorar erros de JS durante SSR */ }
     }
 
     private void UpdateAccountPageFlag()
@@ -106,14 +215,22 @@
         TabService.CloseTab(tabId);
     }
 
-    private void HandleTabsChanged()
+    private async void HandleTabsChanged()
     {
-        InvokeAsync(StateHasChanged);
+        await SaveTabsAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
         TabService.OnTabsChanged -= HandleTabsChanged;
         NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+    private class SavedTab
+    {
+        public string Key { get; set; } = "";
+        public bool Pinned { get; set; }
+        public bool Active { get; set; }
     }
 }

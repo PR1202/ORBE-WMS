@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ORBE_WMS.WebApp.Components;
 using ORBE_WMS.WebApp.Components.Account;
 using ORBE_WMS.WebApp.Data;
@@ -25,6 +26,8 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 builder.AddSqlServerDbContext<ApplicationDbContext>("orbeDb");
+builder.Services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(sp =>
+    new ScopedDbContextFactory<ApplicationDbContext>(sp));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>

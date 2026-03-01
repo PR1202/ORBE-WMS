@@ -10,6 +10,14 @@ public class TabService
     public event Action? OnTabsChanged;
 
     /// <summary>
+    /// Remove todas as abas (usado para restaurar do sessionStorage).
+    /// </summary>
+    public void ClearAll()
+    {
+        _tabs.Clear();
+    }
+
+    /// <summary>
     /// Abre uma nova aba ou reativa uma já existente do mesmo tipo.
     /// </summary>
     public void OpenTab(string title, string icon, Type componentType)

@@ -7,7 +7,7 @@
 @using ORBE_WMS.WebApp.Data
 @using ORBE_WMS.WebApp.Services
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject TabService TabService
@@ -264,10 +264,12 @@ else
         _isAdmin = user.IsInRole("Admin");
         _nomeUsuario = user.Identity?.Name ?? "Usuário";
 
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         // Buscar nome real do usuário
         if (_userId is not null)
         {
-            var appUser = await Db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _userId);
+            var appUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _userId);
             if (appUser is not null)
             {
                 _nomeUsuario = appUser.Nome;
@@ -276,33 +278,33 @@ else
 
         if (_isAdmin)
         {
-            _totalArmazens = await Db.Armazens.AsNoTracking().CountAsync(a => a.Ativo);
-            _totalDepositantes = await Db.Depositantes.AsNoTracking().CountAsync(d => d.Ativo);
-            _depositantesInativos = await Db.Depositantes.AsNoTracking().CountAsync(d => !d.Ativo);
-            _totalUsuarios = await Db.Users.AsNoTracking().CountAsync();
-            _armazens = await Db.Armazens.AsNoTracking()
+            _totalArmazens = await db.Armazens.AsNoTracking().CountAsync(a => a.Ativo);
+            _totalDepositantes = await db.Depositantes.AsNoTracking().CountAsync(d => d.Ativo);
+            _depositantesInativos = await db.Depositantes.AsNoTracking().CountAsync(d => !d.Ativo);
+            _totalUsuarios = await db.Users.AsNoTracking().CountAsync();
+            _armazens = await db.Armazens.AsNoTracking()
                 .OrderByDescending(a => a.DataCriacao)
                 .Take(5)
                 .ToListAsync();
         }
         else
         {
-            var meusArmazemIds = await Db.UsuarioArmazens.AsNoTracking()
+            var meusArmazemIds = await db.UsuarioArmazens.AsNoTracking()
                 .Where(ua => ua.UsuarioId == _userId)
                 .Select(ua => ua.ArmazemId)
                 .ToListAsync();
 
             _totalArmazens = meusArmazemIds.Count;
-            _totalDepositantes = await Db.Depositantes.AsNoTracking()
+            _totalDepositantes = await db.Depositantes.AsNoTracking()
                 .CountAsync(d => d.Ativo && meusArmazemIds.Contains(d.ArmazemId));
 
-            _armazens = await Db.Armazens.AsNoTracking()
+            _armazens = await db.Armazens.AsNoTracking()
                 .Where(a => meusArmazemIds.Contains(a.Id))
                 .OrderBy(a => a.Nome)
                 .ToListAsync();
 
             // Buscar papel do usuário (pegar o mais relevante)
-            var papeis = await Db.UsuarioArmazens.AsNoTracking()
+            var papeis = await db.UsuarioArmazens.AsNoTracking()
                 .Where(ua => ua.UsuarioId == _userId)
                 .Select(ua => ua.Role)
                 .Distinct()

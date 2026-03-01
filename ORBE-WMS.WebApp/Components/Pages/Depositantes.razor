@@ -6,7 +6,7 @@
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Depositantes - ORBE WMS</PageTitle>
@@ -225,27 +225,26 @@ else
     private async Task CarregarDados()
     {
         _carregando = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
 
         if (_isAdmin)
         {
-            // Admin vê todos os armazéns e depositantes
-            _armazens = await Db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
-            _depositantes = await Db.Depositantes.AsNoTracking().Include(d => d.Armazem).OrderBy(d => d.Nome).ToListAsync();
+            _armazens = await db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
+            _depositantes = await db.Depositantes.AsNoTracking().Include(d => d.Armazem).OrderBy(d => d.Nome).ToListAsync();
         }
         else
         {
-            // Usuário comum: apenas armazéns vinculados
-            _armazemIdsPermitidos = await Db.UsuarioArmazens.AsNoTracking()
+            _armazemIdsPermitidos = await db.UsuarioArmazens.AsNoTracking()
                 .Where(ua => ua.UsuarioId == _userId)
                 .Select(ua => ua.ArmazemId)
                 .ToListAsync();
 
-            _armazens = await Db.Armazens.AsNoTracking()
+            _armazens = await db.Armazens.AsNoTracking()
                 .Where(a => a.Ativo && _armazemIdsPermitidos.Contains(a.Id))
                 .OrderBy(a => a.Nome)
                 .ToListAsync();
 
-            _depositantes = await Db.Depositantes.AsNoTracking()
+            _depositantes = await db.Depositantes.AsNoTracking()
                 .Include(d => d.Armazem)
                 .Where(d => _armazemIdsPermitidos.Contains(d.ArmazemId))
                 .OrderBy(d => d.Nome)
@@ -269,7 +268,8 @@ else
 
     private async Task CarregarArmazensParaDialog()
     {
-        var query = Db.Armazens.AsNoTracking().Where(a => a.Ativo);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var query = db.Armazens.AsNoTracking().Where(a => a.Ativo);
         var armazensPermitidosIds = _armazens.Select(a => a.Id).ToList();
         if (armazensPermitidosIds is { Count: > 0 })
         {
@@ -319,9 +319,10 @@ else
         _salvando = true;
         try
         {
+            await using var db = await DbFactory.CreateDbContextAsync();
             if (_isEditando && _depositanteIdEditando.HasValue)
             {
-                var depositante = await Db.Depositantes.FindAsync(_depositanteIdEditando.Value);
+                var depositante = await db.Depositantes.FindAsync(_depositanteIdEditando.Value);
                 if (depositante is not null)
                 {
                     depositante.ArmazemId = _model.ArmazemId;
@@ -329,8 +330,7 @@ else
                     depositante.CNPJ = _model.CNPJ;
                     depositante.CodigoExterno = _model.CodigoExterno;
                     depositante.Endereco = _model.Endereco;
-                    await Db.SaveChangesAsync();
-                    Db.ChangeTracker.Clear();
+                    await db.SaveChangesAsync();
                 }
             }
             else
@@ -343,9 +343,8 @@ else
                     CodigoExterno = _model.CodigoExterno,
                     Endereco = _model.Endereco
                 };
-                Db.Depositantes.Add(depositante);
-                await Db.SaveChangesAsync();
-                Db.ChangeTracker.Clear();
+                db.Depositantes.Add(depositante);
+                await db.SaveChangesAsync();
             }
 
             _showModal = false;
@@ -359,12 +358,12 @@ else
 
     private async Task ToggleAtivo(Depositante depositante)
     {
-        var entity = await Db.Depositantes.FindAsync(depositante.Id);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var entity = await db.Depositantes.FindAsync(depositante.Id);
         if (entity is not null)
         {
             entity.Ativo = !entity.Ativo;
-            await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
+            await db.SaveChangesAsync();
             await CarregarDados();
         }
     }

@@ -15,49 +15,49 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Home))" @onclick="OpenDashboard">
+            <a class="nav-link @ActiveClass(typeof(Pages.Home))" href="/?tab=dashboard" @onclick="OpenDashboard" @onclick:preventDefault>
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
-            </button>
+            </a>
         </div>
 
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Recebimento))" @onclick="OpenRecebimento">
+            <a class="nav-link @ActiveClass(typeof(Pages.Recebimento))" href="/?tab=recebimento" @onclick="OpenRecebimento" @onclick:preventDefault>
                 <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Recebimento
-            </button>
+            </a>
         </div>
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Estoque))" @onclick="OpenEstoque">
+            <a class="nav-link @ActiveClass(typeof(Pages.Estoque))" href="/?tab=estoque" @onclick="OpenEstoque" @onclick:preventDefault>
                 <span class="bi bi-box-nav-menu" aria-hidden="true"></span> Estoque
-            </button>
+            </a>
         </div>
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Separacao))" @onclick="OpenSeparacao">
+            <a class="nav-link @ActiveClass(typeof(Pages.Separacao))" href="/?tab=separacao" @onclick="OpenSeparacao" @onclick:preventDefault>
                 <span class="bi bi-scissors-nav-menu" aria-hidden="true"></span> Separação
-            </button>
+            </a>
         </div>
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Expedicao))" @onclick="OpenExpedicao">
+            <a class="nav-link @ActiveClass(typeof(Pages.Expedicao))" href="/?tab=expedicao" @onclick="OpenExpedicao" @onclick:preventDefault>
                 <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> Expedição
-            </button>
+            </a>
         </div>
 
         <div class="nav-item px-3">
-            <button class="nav-link @ActiveClass(typeof(Pages.Depositantes))" @onclick="OpenDepositantes">
+            <a class="nav-link @ActiveClass(typeof(Pages.Depositantes))" href="/?tab=depositantes" @onclick="OpenDepositantes" @onclick:preventDefault>
                 <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Depositantes
-            </button>
+            </a>
         </div>
 
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-item px-3">
-                    <button class="nav-link @ActiveClass(typeof(Pages.Armazens))" @onclick="OpenArmazens">
+                    <a class="nav-link @ActiveClass(typeof(Pages.Armazens))" href="/?tab=armazens" @onclick="OpenArmazens" @onclick:preventDefault>
                         <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> Armazéns
-                    </button>
+                    </a>
                 </div>
                 <div class="nav-item px-3">
-                    <button class="nav-link @ActiveClass(typeof(Pages.Usuarios))" @onclick="OpenUsuarios">
+                    <a class="nav-link @ActiveClass(typeof(Pages.Usuarios))" href="/?tab=usuarios" @onclick="OpenUsuarios" @onclick:preventDefault>
                         <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Usuários
-                    </button>
+                    </a>
                 </div>
             </Authorized>
         </AuthorizeView>

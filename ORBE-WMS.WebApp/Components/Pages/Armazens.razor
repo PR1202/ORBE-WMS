@@ -4,7 +4,7 @@
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <PageTitle>Armazéns - ORBE WMS</PageTitle>
 
@@ -165,7 +165,8 @@ else
     private async Task CarregarDados()
     {
         _carregando = true;
-        _armazens = await Db.Armazens.AsNoTracking().OrderBy(a => a.Nome).ToListAsync();
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _armazens = await db.Armazens.AsNoTracking().OrderBy(a => a.Nome).ToListAsync();
         _carregando = false;
     }
 
@@ -200,16 +201,16 @@ else
         _salvando = true;
         try
         {
+            await using var db = await DbFactory.CreateDbContextAsync();
             if (_isEditando && _armazemIdEditando.HasValue)
             {
-                var armazem = await Db.Armazens.FindAsync(_armazemIdEditando.Value);
+                var armazem = await db.Armazens.FindAsync(_armazemIdEditando.Value);
                 if (armazem is not null)
                 {
                     armazem.Nome = _model.Nome;
                     armazem.CNPJ = _model.CNPJ;
                     armazem.Endereco = _model.Endereco;
-                    await Db.SaveChangesAsync();
-                    Db.ChangeTracker.Clear();
+                    await db.SaveChangesAsync();
                 }
             }
             else
@@ -220,14 +221,12 @@ else
                     CNPJ = _model.CNPJ,
                     Endereco = _model.Endereco
                 };
-                Db.Armazens.Add(armazem);
-                await Db.SaveChangesAsync();
-                Db.ChangeTracker.Clear();
+                db.Armazens.Add(armazem);
+                await db.SaveChangesAsync();
             }
 
             _showModal = false;
             await CarregarDados();
-            // TODO: Implementar Notificação Toast nativa se desejado, omitido por ora
         }
         finally
         {
@@ -237,14 +236,12 @@ else
 
     private async Task ToggleAtivo(Armazem armazem)
     {
-        // Simple js interop for confirm might be better, but we will assume no JS and just toggle for now. 
-        // In a real scenario we'd use JSInterop for confirm() dialog.
-        var entity = await Db.Armazens.FindAsync(armazem.Id);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var entity = await db.Armazens.FindAsync(armazem.Id);
         if (entity is not null)
         {
             entity.Ativo = !entity.Ativo;
-            await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
+            await db.SaveChangesAsync();
             await CarregarDados();
         }
     }

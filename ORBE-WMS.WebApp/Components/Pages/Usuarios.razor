@@ -5,7 +5,7 @@
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Usuários - ORBE WMS</PageTitle>
@@ -282,8 +282,8 @@ else
     private async Task CarregarDados()
     {
         _carregandoPrincipal = true;
-        Db.ChangeTracker.Clear();
-        _usuarios = await Db.Users
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _usuarios = await db.Users
             .AsNoTracking()
             .Include(u => u.Armazens)
                 .ThenInclude(ua => ua.Armazem)
@@ -407,8 +407,9 @@ else
         _showArmazensModal = true;
         _carregandoArmazens = true;
 
-        var armazensAll = await Db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
-        var vinculosExistentes = await Db.UsuarioArmazens.AsNoTracking()
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var armazensAll = await db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
+        var vinculosExistentes = await db.UsuarioArmazens.AsNoTracking()
             .Where(ua => ua.UsuarioId == usuario.Id)
             .ToListAsync();
 
@@ -437,11 +438,12 @@ else
         _salvandoArmazens = true;
         try
         {
+            await using var db = await DbFactory.CreateDbContextAsync();
             // Remove todos os vínculos existentes
-            var existentes = await Db.UsuarioArmazens
+            var existentes = await db.UsuarioArmazens
                 .Where(ua => ua.UsuarioId == _usuarioArmazensId)
                 .ToListAsync();
-            Db.UsuarioArmazens.RemoveRange(existentes);
+            db.UsuarioArmazens.RemoveRange(existentes);
 
             // Adiciona os novos vínculos selecionados
             var novos = _vinculos
@@ -452,10 +454,9 @@ else
                     ArmazemId = v.ArmazemId,
                     Role = v.Role
                 });
-            Db.UsuarioArmazens.AddRange(novos);
+            db.UsuarioArmazens.AddRange(novos);
 
-            await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
+            await db.SaveChangesAsync();
             
             _showArmazensModal = false;
             await CarregarDados();
