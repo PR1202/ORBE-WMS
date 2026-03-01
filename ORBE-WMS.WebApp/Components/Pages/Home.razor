@@ -1,15 +1,16 @@
-@page "/"
-@attribute [Authorize]
+@* Componente renderizado dentro do sistema de abas *@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
 
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
+@inject TabService TabService
 
 <PageTitle>Dashboard - ORBE WMS</PageTitle>
 
@@ -182,22 +183,22 @@ else
                             @if (_isAdmin)
                             {
                                 <div class="col-6">
-                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("armazens"))">
+                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirArmazens">
                                         <i class="bi bi-plus-lg fs-4 mb-1"></i> Novo Armazém
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("admin/usuarios"))">
+                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirUsuarios">
                                         <i class="bi bi-person-plus-fill fs-4 mb-1"></i> Novo Usuário
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("depositantes"))">
+                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirDepositantes">
                                         <i class="bi bi-building fs-4 mb-1"></i> Depositantes
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("admin/usuarios"))">
+                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirUsuarios">
                                         <i class="bi bi-people-fill fs-4 mb-1"></i> Usuários
                                     </button>
                                 </div>
@@ -205,22 +206,22 @@ else
                             else
                             {
                                 <div class="col-6">
-                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("depositantes"))">
+                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirDepositantes">
                                         <i class="bi bi-building fs-4 mb-1"></i> Depositantes
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("recebimento"))">
+                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirRecebimento">
                                         <i class="bi bi-box-arrow-in-right fs-4 mb-1"></i> Recebimento
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("estoque"))">
+                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirEstoque">
                                         <i class="bi bi-box fs-4 mb-1"></i> Estoque
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="@(() => Nav.NavigateTo("expedicao"))">
+                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirExpedicao">
                                         <i class="bi bi-truck fs-4 mb-1"></i> Expedição
                                     </button>
                                 </div>
@@ -236,6 +237,14 @@ else
 @code {
     private bool _carregando = true;
     private bool _isAdmin;
+
+    // Abrir abas via acesso rápido
+    private void AbrirArmazens() => TabService.OpenTab("Armazéns", "bi-building-add", typeof(Armazens));
+    private void AbrirDepositantes() => TabService.OpenTab("Depositantes", "bi-building", typeof(Depositantes));
+    private void AbrirUsuarios() => TabService.OpenTab("Usuários", "bi-people-fill", typeof(Usuarios));
+    private void AbrirRecebimento() => TabService.OpenTab("Recebimento", "bi-box-arrow-in-right", typeof(Recebimento));
+    private void AbrirEstoque() => TabService.OpenTab("Estoque", "bi-box", typeof(Estoque));
+    private void AbrirExpedicao() => TabService.OpenTab("Expedição", "bi-truck", typeof(Expedicao));
     private string? _userId;
     private string _nomeUsuario = "";
     private string _meuPapel = "-";

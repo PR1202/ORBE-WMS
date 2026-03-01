@@ -1,6 +1,8 @@
 @implements IDisposable
 
+@using ORBE_WMS.WebApp.Services
 @inject NavigationManager NavigationManager
+@inject TabService TabService
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -13,49 +15,49 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <button class="nav-link @ActiveClass(typeof(Pages.Home))" @onclick="OpenDashboard">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
-            </NavLink>
+            </button>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="recebimento">
+            <button class="nav-link @ActiveClass(typeof(Pages.Recebimento))" @onclick="OpenRecebimento">
                 <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Recebimento
-            </NavLink>
+            </button>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="estoque">
+            <button class="nav-link @ActiveClass(typeof(Pages.Estoque))" @onclick="OpenEstoque">
                 <span class="bi bi-box-nav-menu" aria-hidden="true"></span> Estoque
-            </NavLink>
+            </button>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="separacao">
+            <button class="nav-link @ActiveClass(typeof(Pages.Separacao))" @onclick="OpenSeparacao">
                 <span class="bi bi-scissors-nav-menu" aria-hidden="true"></span> Separação
-            </NavLink>
+            </button>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="expedicao">
+            <button class="nav-link @ActiveClass(typeof(Pages.Expedicao))" @onclick="OpenExpedicao">
                 <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> Expedição
-            </NavLink>
+            </button>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="depositantes">
+            <button class="nav-link @ActiveClass(typeof(Pages.Depositantes))" @onclick="OpenDepositantes">
                 <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Depositantes
-            </NavLink>
+            </button>
         </div>
 
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="armazens">
+                    <button class="nav-link @ActiveClass(typeof(Pages.Armazens))" @onclick="OpenArmazens">
                         <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> Armazéns
-                    </NavLink>
+                    </button>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="admin/usuarios">
+                    <button class="nav-link @ActiveClass(typeof(Pages.Usuarios))" @onclick="OpenUsuarios">
                         <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Usuários
-                    </NavLink>
+                    </button>
                 </div>
             </Authorized>
         </AuthorizeView>
@@ -100,7 +102,25 @@
     {
         currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
+        TabService.OnTabsChanged += HandleTabsChanged;
     }
+
+    private void OpenDashboard() => TabService.OpenTab("Dashboard", "bi-house-door-fill", typeof(Pages.Home));
+    private void OpenRecebimento() => TabService.OpenTab("Recebimento", "bi-box-arrow-in-right", typeof(Pages.Recebimento));
+    private void OpenEstoque() => TabService.OpenTab("Estoque", "bi-box", typeof(Pages.Estoque));
+    private void OpenSeparacao() => TabService.OpenTab("Separação", "bi-scissors", typeof(Pages.Separacao));
+    private void OpenExpedicao() => TabService.OpenTab("Expedição", "bi-truck", typeof(Pages.Expedicao));
+    private void OpenArmazens() => TabService.OpenTab("Armazéns", "bi-building-add", typeof(Pages.Armazens));
+    private void OpenDepositantes() => TabService.OpenTab("Depositantes", "bi-building", typeof(Pages.Depositantes));
+    private void OpenUsuarios() => TabService.OpenTab("Usuários", "bi-people-fill", typeof(Pages.Usuarios));
+
+    private string ActiveClass(Type componentType)
+    {
+        var active = TabService.ActiveTab;
+        return active is not null && active.ComponentType == componentType ? "active" : "";
+    }
+
+    private void HandleTabsChanged() => InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
@@ -111,5 +131,6 @@
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        TabService.OnTabsChanged -= HandleTabsChanged;
     }
 }
