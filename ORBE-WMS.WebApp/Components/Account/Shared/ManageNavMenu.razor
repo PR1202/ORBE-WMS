@@ -3,32 +3,46 @@
 
 @inject SignInManager<ApplicationUser> SignInManager
 
-<MudNavMenu>
-    <MudNavLink Href="Account/Manage" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Person">
-        Perfil
-    </MudNavLink>
-    <MudNavLink Href="Account/Manage/Email" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Email">
-        Email
-    </MudNavLink>
-    <MudNavLink Href="Account/Manage/ChangePassword" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Password">
-        Senha
-    </MudNavLink>
+<ul class="nav nav-pills flex-column">
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage" Match="NavLinkMatch.All">
+            <i class="bi bi-person me-2"></i> Perfil
+        </NavLink>
+    </li>
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage/Email">
+            <i class="bi bi-envelope me-2"></i> Email
+        </NavLink>
+    </li>
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage/ChangePassword">
+            <i class="bi bi-key me-2"></i> Senha
+        </NavLink>
+    </li>
     @if (hasExternalLogins)
     {
-        <MudNavLink Href="Account/Manage/ExternalLogins" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Link">
-            Logins Externos
-        </MudNavLink>
+        <li class="nav-item">
+            <NavLink class="nav-link" href="Account/Manage/ExternalLogins">
+                <i class="bi bi-link me-2"></i> Logins Externos
+            </NavLink>
+        </li>
     }
-    <MudNavLink Href="Account/Manage/TwoFactorAuthentication" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Security">
-        Autenticação 2FA
-    </MudNavLink>
-    <MudNavLink Href="Account/Manage/Passkeys" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Key">
-        Passkeys
-    </MudNavLink>
-    <MudNavLink Href="Account/Manage/PersonalData" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
-        Dados Pessoais
-    </MudNavLink>
-</MudNavMenu>
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage/TwoFactorAuthentication">
+            <i class="bi bi-shield-lock me-2"></i> Autenticação 2FA
+        </NavLink>
+    </li>
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage/Passkeys">
+            <i class="bi bi-usb-drive me-2"></i> Passkeys
+        </NavLink>
+    </li>
+    <li class="nav-item">
+        <NavLink class="nav-link" href="Account/Manage/PersonalData">
+            <i class="bi bi-database me-2"></i> Dados Pessoais
+        </NavLink>
+    </li>
+</ul>
 
 @code {
     private bool hasExternalLogins;

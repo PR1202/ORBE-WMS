@@ -1,41 +1,22 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="_theme" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
 <div class="account-layout">
-    <MudPaper Elevation="4" Class="pa-8 account-card">
-        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
-            <MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Large" Color="Color.Primary" />
-            <MudText Typo="Typo.h5" Color="Color.Primary">
-                <b>ORBE</b> WMS
-            </MudText>
-            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
-                Sistema de Gerenciamento de Armazém
-            </MudText>
-        </MudStack>
-        <MudDivider Class="mb-6" />
-        @Body
-    </MudPaper>
+    <div class="account-card card shadow-lg bg-white">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <div class="account-logo mb-2">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+                <h2 class="mb-1">
+                    <span class="fw-bold" style="color: #1565C0;">ORBE</span>
+                    <span class="fw-light text-dark">WMS</span>
+                </h2>
+                <span class="text-muted small">
+                    Sistema de Gerenciamento de Armazém
+                </span>
+            </div>
+            <hr class="mb-4" />
+            @Body
+        </div>
+    </div>
 </div>
-
-@code {
-    private MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight
-        {
-            Primary = "#1565C0",
-            Secondary = "#00897B",
-            Background = "#E8EAF6"
-        },
-        Typography = new Typography
-        {
-            Default = new DefaultTypography
-            {
-                FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
-            }
-        }
-    };
-}

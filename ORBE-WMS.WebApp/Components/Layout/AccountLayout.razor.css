@@ -3,12 +3,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 50%, #1A237E 100%);
+    background: linear-gradient(135deg, #0D47A1 0%, #1A237E 50%, #1a1a3e 100%);
     padding: 1rem;
 }
 
 ::deep .account-card {
     width: 100%;
     max-width: 440px;
-    border-radius: 12px;
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+::deep .account-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
 }

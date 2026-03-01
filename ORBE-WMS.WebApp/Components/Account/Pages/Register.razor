@@ -19,82 +19,74 @@
 
 <PageTitle>Registrar Usuário - ORBE WMS</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Registrar Novo Usuário</MudText>
+<h4 class="mb-4">Registrar Novo Usuário</h4>
 
-<MudGrid>
-    <MudItem xs="12" md="7">
-        <MudPaper Class="pa-6" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-4">Dados do Usuário</MudText>
+<div class="row">
+    <div class="col-md-7 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="card-title mb-4">Dados do Usuário</h6>
 
-            @if (!string.IsNullOrEmpty(Message))
-            {
-                var severity = Message.StartsWith("Error") ? Severity.Error : Severity.Success;
-                <MudAlert Severity="@severity" Class="mb-4" Dense="true">@Message</MudAlert>
-            }
-
-            <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
-                <DataAnnotationsValidator />
-
-                <div class="mud-input-control mb-4">
-                    <label class="mud-input-label" for="Input.Nome">Nome Completo</label>
-                    <div class="login-field">
-                        <InputText @bind-Value="Input.Nome" id="Input.Nome" class="login-input" placeholder="Nome completo do usuário" />
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    var alertClass = Message.StartsWith("Error") ? "alert-danger" : "alert-success";
+                    <div class="alert @alertClass" role="alert">
+                        @Message
                     </div>
-                    <ValidationMessage For="() => Input.Nome" class="text-danger" />
-                </div>
+                }
 
-                <div class="mud-input-control mb-4">
-                    <label class="mud-input-label" for="Input.Email">Email</label>
-                    <div class="login-field">
-                        <InputText @bind-Value="Input.Email" id="Input.Email" class="login-input" autocomplete="username" placeholder="usuario@empresa.com" />
+                <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.Nome" id="Input.Nome" class="form-control" placeholder="Nome completo do usuário" />
+                        <label for="Input.Nome">Nome Completo</label>
+                        <ValidationMessage For="() => Input.Nome" class="text-danger" />
                     </div>
-                    <ValidationMessage For="() => Input.Email" class="text-danger" />
-                </div>
 
-                <div class="mud-input-control mb-4">
-                    <label class="mud-input-label" for="Input.Password">Senha</label>
-                    <div class="login-field">
-                        <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="login-input" autocomplete="new-password" placeholder="••••••••" />
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" placeholder="usuario@empresa.com" />
+                        <label for="Input.Email">Email</label>
+                        <ValidationMessage For="() => Input.Email" class="text-danger" />
                     </div>
-                    <ValidationMessage For="() => Input.Password" class="text-danger" />
-                </div>
 
-                <div class="mud-input-control mb-4">
-                    <label class="mud-input-label" for="Input.ConfirmPassword">Confirmar Senha</label>
-                    <div class="login-field">
-                        <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="login-input" autocomplete="new-password" placeholder="••••••••" />
+                    <div class="form-floating mb-3">
+                        <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                        <label for="Input.Password">Senha</label>
+                        <ValidationMessage For="() => Input.Password" class="text-danger" />
                     </div>
-                    <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-                </div>
 
-                <MudButton ButtonType="ButtonType.Submit"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Size="Size.Large"
-                           StartIcon="@Icons.Material.Filled.PersonAdd"
-                           FullWidth="true">
-                    Criar Usuário
-                </MudButton>
-            </EditForm>
-        </MudPaper>
-    </MudItem>
+                    <div class="form-floating mb-4">
+                        <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                        <label for="Input.ConfirmPassword">Confirmar Senha</label>
+                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                    </div>
 
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-6" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">
-                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-1" Size="Size.Small" />
-                Informações
-            </MudText>
-            <MudDivider Class="mb-3" />
-            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
-                O usuário será criado com o email já confirmado e poderá fazer login imediatamente com as credenciais definidas.
-            </MudText>
-            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);" Class="mt-2">
-                Após a criação, vincule o usuário a um ou mais armazéns na área de administração.
-            </MudText>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        Criar Usuário
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm border-info bg-light">
+            <div class="card-body p-4">
+                <h6 class="card-title mb-3 text-info">
+                    <i class="bi bi-info-circle me-1"></i> Informações
+                </h6>
+                <hr class="mb-3" />
+                <p class="text-muted small">
+                    O usuário será criado com o email já confirmado e poderá fazer login imediatamente com as credenciais definidas.
+                </p>
+                <p class="text-muted small mt-2">
+                    Após a criação, vincule o usuário a um ou mais armazéns na área de administração.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;

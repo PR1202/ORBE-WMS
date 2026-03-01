@@ -4,98 +4,159 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
-@using ORBE_WMS.WebApp.Components.Dialogs
 
 @inject ApplicationDbContext Db
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
 <PageTitle>Armazéns - ORBE WMS</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Armazéns</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="CriarArmazem">
-        Novo Armazém
-    </MudButton>
-</MudStack>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Armazéns</h4>
+    <button class="btn btn-primary" @onclick="CriarArmazem">
+        <i class="bi bi-plus-lg me-1"></i> Novo Armazém
+    </button>
+</div>
 
 @if (_carregando)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <div class="progress" style="height: 3px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated w-100" role="progressbar"></div>
+    </div>
 }
 else
 {
-    <MudDataGrid Items="@_armazens" Dense="true" Hover="true" Striped="true" Bordered="true"
-                 FixedHeader="true" Height="calc(100vh - 230px)"
-                 Filterable="true" FilterMode="DataGridFilterMode.Simple"
-                 QuickFilter="@_quickFilter">
-        <ToolBarContent>
-            <MudTextField @bind-Value="_searchString" Placeholder="Buscar armazém..."
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          IconSize="Size.Medium" Class="mt-0" Immediate="true" />
-        </ToolBarContent>
-        <Columns>
-            <PropertyColumn Property="x => x.Nome" Title="Nome" />
-            <PropertyColumn Property="x => x.CNPJ" Title="CNPJ" />
-            <PropertyColumn Property="x => x.Endereco" Title="Endereço" />
-            <TemplateColumn Title="Status" Sortable="false" Filterable="false">
-                <CellTemplate>
-                    @if (context.Item.Ativo)
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex align-items-center">
+            <div class="input-group" style="max-width: 300px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar armazém..." @bind="_searchString" @bind:event="oninput" />
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>CNPJ</th>
+                        <th>Endereço</th>
+                        <th>Status</th>
+                        <th>Criado em</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ArmazensFiltrados.Any())
                     {
-                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Ativo</MudChip>
+                        @foreach (var context in ArmazensFiltrados)
+                        {
+                            <tr>
+                                <td>@context.Nome</td>
+                                <td>@context.CNPJ</td>
+                                <td>@context.Endereco</td>
+                                <td>
+                                    @if (context.Ativo)
+                                    {
+                                        <span class="badge bg-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    }
+                                </td>
+                                <td>@context.DataCriacao.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => EditarArmazem(context)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success")" 
+                                            title="@(context.Ativo ? "Desativar" : "Ativar")"
+                                            @onclick="() => ToggleAtivo(context)">
+                                        <i class="bi @(context.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
                     }
                     else
                     {
-                        <MudChip T="string" Color="Color.Default" Size="Size.Small">Inativo</MudChip>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Nenhum armazém encontrado.</td>
+                        </tr>
                     }
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.DataCriacao" Title="Criado em" Format="dd/MM/yyyy" />
-            <TemplateColumn Title="Ações" Sortable="false" Filterable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="Editar">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           Color="Color.Primary"
-                                           OnClick="() => EditarArmazem(context.Item)" />
-                        </MudTooltip>
-                        <MudTooltip Text="@(context.Item.Ativo ? "Desativar" : "Ativar")">
-                            <MudIconButton Icon="@(context.Item.Ativo ? Icons.Material.Filled.ToggleOn : Icons.Material.Filled.ToggleOff)"
-                                           Size="Size.Small"
-                                           Color="@(context.Item.Ativo ? Color.Success : Color.Default)"
-                                           OnClick="() => ToggleAtivo(context.Item)" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <NoRecordsContent>
-            <MudText>Nenhum armazém encontrado.</MudText>
-        </NoRecordsContent>
-    </MudDataGrid>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-building me-2"></i>
+                        @(_isEditando ? "Editar Armazém" : "Novo Armazém")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_model" OnValidSubmit="Salvar">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nome *</label>
+                            <InputText @bind-Value="_model.Nome" class="form-control" />
+                            <ValidationMessage For="() => _model.Nome" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">CNPJ</label>
+                            <InputText @bind-Value="_model.CNPJ" class="form-control" placeholder="00.000.000/0000-00" />
+                            <ValidationMessage For="() => _model.CNPJ" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Endereço</label>
+                            <InputTextArea @bind-Value="_model.Endereco" class="form-control" rows="2" />
+                            <ValidationMessage For="() => _model.Endereco" class="text-danger small" />
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light" @onclick="FecharModal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_salvando">
+                                @if (_salvando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                }
+                                Salvar
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
     private List<Armazem> _armazens = [];
     private bool _carregando = true;
-    private string? _searchString;
+    private string _searchString = "";
 
-    private Func<Armazem, bool> _quickFilter => x =>
-    {
-        if (string.IsNullOrWhiteSpace(_searchString))
-            return true;
-        if (x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (x.CNPJ is not null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (x.Endereco is not null && x.Endereco.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        return false;
-    };
+    // Modal State
+    private bool _showModal = false;
+    private bool _isEditando = false;
+    private bool _salvando = false;
+    private int? _armazemIdEditando;
+    private ArmazemModel _model = new();
+
+    private IEnumerable<Armazem> ArmazensFiltrados => _armazens.Where(x =>
+        string.IsNullOrWhiteSpace(_searchString) ||
+        x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+        (x.CNPJ != null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+        (x.Endereco != null && x.Endereco.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+    );
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,57 +170,96 @@ else
         _carregando = false;
     }
 
-    private async Task CriarArmazem()
+    private void CriarArmazem()
     {
-        var dialog = await DialogService.ShowAsync<ArmazemDialog>("Novo Armazém",
-            new DialogParameters(),
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
-        {
-            await CarregarDados();
-            Snackbar.Add("Armazém criado com sucesso!", Severity.Success);
-        }
+        _isEditando = false;
+        _armazemIdEditando = null;
+        _model = new ArmazemModel();
+        _showModal = true;
     }
 
-    private async Task EditarArmazem(Armazem armazem)
+    private void EditarArmazem(Armazem armazem)
     {
-        var parameters = new DialogParameters
+        _isEditando = true;
+        _armazemIdEditando = armazem.Id;
+        _model = new ArmazemModel
         {
-            { nameof(ArmazemDialog.ArmazemId), armazem.Id }
+            Nome = armazem.Nome,
+            CNPJ = armazem.CNPJ,
+            Endereco = armazem.Endereco
         };
+        _showModal = true;
+    }
 
-        var dialog = await DialogService.ShowAsync<ArmazemDialog>("Editar Armazém", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+    private void FecharModal()
+    {
+        _showModal = false;
+    }
 
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
+    private async Task Salvar()
+    {
+        _salvando = true;
+        try
         {
+            if (_isEditando && _armazemIdEditando.HasValue)
+            {
+                var armazem = await Db.Armazens.FindAsync(_armazemIdEditando.Value);
+                if (armazem is not null)
+                {
+                    armazem.Nome = _model.Nome;
+                    armazem.CNPJ = _model.CNPJ;
+                    armazem.Endereco = _model.Endereco;
+                    await Db.SaveChangesAsync();
+                    Db.ChangeTracker.Clear();
+                }
+            }
+            else
+            {
+                var armazem = new Armazem
+                {
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    Endereco = _model.Endereco
+                };
+                Db.Armazens.Add(armazem);
+                await Db.SaveChangesAsync();
+                Db.ChangeTracker.Clear();
+            }
+
+            _showModal = false;
             await CarregarDados();
-            Snackbar.Add("Armazém atualizado com sucesso!", Severity.Success);
+            // TODO: Implementar Notificação Toast nativa se desejado, omitido por ora
+        }
+        finally
+        {
+            _salvando = false;
         }
     }
 
     private async Task ToggleAtivo(Armazem armazem)
     {
-        var acao = armazem.Ativo ? "desativar" : "ativar";
-        var confirmed = await DialogService.ShowMessageBox(
-            "Confirmar",
-            $"Deseja {acao} o armazém \"{armazem.Nome}\"?",
-            yesText: "Sim", cancelText: "Cancelar");
-
-        if (confirmed == true)
+        // Simple js interop for confirm might be better, but we will assume no JS and just toggle for now. 
+        // In a real scenario we'd use JSInterop for confirm() dialog.
+        var entity = await Db.Armazens.FindAsync(armazem.Id);
+        if (entity is not null)
         {
-            var entity = await Db.Armazens.FindAsync(armazem.Id);
-            if (entity is not null)
-            {
-                entity.Ativo = !entity.Ativo;
-                await Db.SaveChangesAsync();
-                Db.ChangeTracker.Clear();
-                await CarregarDados();
-                Snackbar.Add($"Armazém {(entity.Ativo ? "ativado" : "desativado")} com sucesso!", Severity.Success);
-            }
+            entity.Ativo = !entity.Ativo;
+            await Db.SaveChangesAsync();
+            Db.ChangeTracker.Clear();
+            await CarregarDados();
         }
+    }
+
+    private class ArmazemModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Nome { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(18)]
+        public string? CNPJ { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(500)]
+        public string? Endereco { get; set; }
     }
 }

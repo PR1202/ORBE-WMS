@@ -6,136 +6,212 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
-@using ORBE_WMS.WebApp.Components.Dialogs
 
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
 <PageTitle>Depositantes - ORBE WMS</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Depositantes</MudText>
-    <MudSpacer />
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Depositantes</h4>
     @if (_armazens.Any())
     {
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="CriarDepositante">
-            Novo Depositante
-        </MudButton>
+        <button class="btn btn-primary" @onclick="CriarDepositante">
+            <i class="bi bi-plus-lg me-1"></i> Novo Depositante
+        </button>
     }
-</MudStack>
+</div>
 
 @if (_armazens.Count > 1)
 {
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="3">
-        <MudSelect T="int?" Value="_armazemFiltro" Label="Filtrar por Armazém"
-                   Variant="Variant.Outlined" Dense="true" Clearable="true"
-                   Style="max-width: 350px;"
-                   ValueChanged="OnFiltroChanged">
+    <div class="mb-4" style="max-width: 350px;">
+        <label class="form-label">Filtrar por Armazém</label>
+        <select class="form-select" @onchange="OnFiltroChanged">
+            <option value="">Todos</option>
             @foreach (var a in _armazens)
             {
-                <MudSelectItem T="int?" Value="@((int?)a.Id)">@a.Nome</MudSelectItem>
+                <option value="@a.Id" selected="@(_armazemFiltro == a.Id)">@a.Nome</option>
             }
-        </MudSelect>
-    </MudStack>
+        </select>
+    </div>
 }
 
 @if (_carregando)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <div class="progress" style="height: 3px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated w-100" role="progressbar"></div>
+    </div>
 }
 else if (!_armazens.Any())
 {
-    <MudAlert Severity="Severity.Info" Class="mt-4">
+    <div class="alert alert-info mt-4" role="alert">
         Você não possui acesso a nenhum armazém. Solicite ao administrador que vincule sua conta a um armazém.
-    </MudAlert>
+    </div>
 }
 else
 {
-    <MudDataGrid Items="@_depositantesFiltrados" Dense="true" Hover="true" Striped="true" Bordered="true"
-                 FixedHeader="true" Height="calc(100vh - 300px)"
-                 Filterable="true" FilterMode="DataGridFilterMode.Simple"
-                 QuickFilter="@_quickFilter">
-        <ToolBarContent>
-            <MudTextField @bind-Value="_searchString" Placeholder="Buscar depositante..."
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          IconSize="Size.Medium" Class="mt-0" Immediate="true" />
-        </ToolBarContent>
-        <Columns>
-            <PropertyColumn Property="x => x.Nome" Title="Nome" />
-            <PropertyColumn Property="x => x.CNPJ" Title="CNPJ" />
-            <PropertyColumn Property="x => x.CodigoExterno" Title="Cód. Externo" />
-            <PropertyColumn Property="x => x.Armazem.Nome" Title="Armazém" />
-            <TemplateColumn Title="Status" Sortable="false" Filterable="false">
-                <CellTemplate>
-                    @if (context.Item.Ativo)
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex align-items-center">
+            <div class="input-group" style="max-width: 300px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar depositante..." @bind="_searchString" @bind:event="oninput" />
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>CNPJ</th>
+                        <th>Cód. Externo</th>
+                        <th>Armazém</th>
+                        <th>Status</th>
+                        <th>Criado em</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (DepositantesFiltradosEBusca.Any())
                     {
-                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Ativo</MudChip>
+                        @foreach (var context in DepositantesFiltradosEBusca)
+                        {
+                            <tr>
+                                <td>@context.Nome</td>
+                                <td>@context.CNPJ</td>
+                                <td>@context.CodigoExterno</td>
+                                <td>@context.Armazem?.Nome</td>
+                                <td>
+                                    @if (context.Ativo)
+                                    {
+                                        <span class="badge bg-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    }
+                                </td>
+                                <td>@context.DataCriacao.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => EditarDepositante(context)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success")" 
+                                            title="@(context.Ativo ? "Desativar" : "Ativar")"
+                                            @onclick="() => ToggleAtivo(context)">
+                                        <i class="bi @(context.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
                     }
                     else
                     {
-                        <MudChip T="string" Color="Color.Default" Size="Size.Small">Inativo</MudChip>
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">Nenhum depositante encontrado.</td>
+                        </tr>
                     }
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.DataCriacao" Title="Criado em" Format="dd/MM/yyyy" />
-            <TemplateColumn Title="Ações" Sortable="false" Filterable="false">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="Editar">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           Color="Color.Primary"
-                                           OnClick="() => EditarDepositante(context.Item)" />
-                        </MudTooltip>
-                        <MudTooltip Text="@(context.Item.Ativo ? "Desativar" : "Ativar")">
-                            <MudIconButton Icon="@(context.Item.Ativo ? Icons.Material.Filled.ToggleOn : Icons.Material.Filled.ToggleOff)"
-                                           Size="Size.Small"
-                                           Color="@(context.Item.Ativo ? Color.Success : Color.Default)"
-                                           OnClick="() => ToggleAtivo(context.Item)" />
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <NoRecordsContent>
-            <MudText>Nenhum depositante encontrado.</MudText>
-        </NoRecordsContent>
-    </MudDataGrid>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-business me-2"></i>
+                        @(_isEditando ? "Editar Depositante" : "Novo Depositante")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_model" OnValidSubmit="Salvar">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Armazém *</label>
+                            <InputSelect @bind-Value="_model.ArmazemId" class="form-select">
+                                <option value="0">Selecione um armazém</option>
+                                @foreach (var a in _armazensParaDialog)
+                                {
+                                    <option value="@a.Id">@a.Nome</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="() => _model.ArmazemId" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nome *</label>
+                            <InputText @bind-Value="_model.Nome" class="form-control" />
+                            <ValidationMessage For="() => _model.Nome" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">CNPJ</label>
+                            <InputText @bind-Value="_model.CNPJ" class="form-control" placeholder="00.000.000/0000-00" />
+                            <ValidationMessage For="() => _model.CNPJ" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Código Externo</label>
+                            <InputText @bind-Value="_model.CodigoExterno" class="form-control" />
+                            <ValidationMessage For="() => _model.CodigoExterno" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Endereço</label>
+                            <InputTextArea @bind-Value="_model.Endereco" class="form-control" rows="2" />
+                            <ValidationMessage For="() => _model.Endereco" class="text-danger small" />
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light" @onclick="FecharModal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_salvando">
+                                @if (_salvando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                }
+                                Salvar
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
     private List<Depositante> _depositantes = [];
     private List<Armazem> _armazens = [];
     private List<int> _armazemIdsPermitidos = [];
+    private List<Armazem> _armazensParaDialog = [];
     private bool _carregando = true;
     private bool _isAdmin;
     private string? _userId;
-    private string? _searchString;
+    private string _searchString = "";
     private int? _armazemFiltro;
 
-    private IEnumerable<Depositante> _depositantesFiltrados =>
-        _armazemFiltro.HasValue
-            ? _depositantes.Where(d => d.ArmazemId == _armazemFiltro.Value)
-            : _depositantes;
+    // Modal State
+    private bool _showModal = false;
+    private bool _isEditando = false;
+    private bool _salvando = false;
+    private int? _depositanteIdEditando;
+    private DepositanteModel _model = new();
 
-    private Func<Depositante, bool> _quickFilter => x =>
-    {
-        if (string.IsNullOrWhiteSpace(_searchString))
-            return true;
-        if (x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (x.CNPJ is not null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (x.CodigoExterno is not null && x.CodigoExterno.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (x.Armazem?.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true)
-            return true;
-        return false;
-    };
+    private IEnumerable<Depositante> DepositantesFiltradosEBusca => _depositantes
+        .Where(d => !_armazemFiltro.HasValue || d.ArmazemId == _armazemFiltro.Value)
+        .Where(x =>
+            string.IsNullOrWhiteSpace(_searchString) ||
+            x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+            (x.CNPJ != null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+            (x.CodigoExterno != null && x.CodigoExterno.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+            (x.Armazem?.Nome != null && x.Armazem.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+        );
 
     protected override async Task OnInitializedAsync()
     {
@@ -180,71 +256,137 @@ else
         _carregando = false;
     }
 
-    private void OnFiltroChanged(int? value)
+    private void OnFiltroChanged(ChangeEventArgs e)
     {
-        _armazemFiltro = value;
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            _armazemFiltro = id;
+        }
+        else
+        {
+            _armazemFiltro = null;
+        }
+    }
+
+    private async Task CarregarArmazensParaDialog()
+    {
+        var query = Db.Armazens.AsNoTracking().Where(a => a.Ativo);
+        var armazensPermitidosIds = _armazens.Select(a => a.Id).ToList();
+        if (armazensPermitidosIds is { Count: > 0 })
+        {
+            query = query.Where(a => armazensPermitidosIds.Contains(a.Id));
+        }
+        _armazensParaDialog = await query.OrderBy(a => a.Nome).ToListAsync();
     }
 
     private async Task CriarDepositante()
     {
-        var parameters = new DialogParameters
-        {
-            { nameof(DepositanteDialog.ArmazemIdsPermitidos), _armazens.Select(a => a.Id).ToList() }
-        };
+        await CarregarArmazensParaDialog();
+        _isEditando = false;
+        _depositanteIdEditando = null;
+        _model = new DepositanteModel();
+        
         if (_armazemFiltro.HasValue)
         {
-            parameters.Add(nameof(DepositanteDialog.ArmazemIdPadrao), _armazemFiltro.Value);
+            _model.ArmazemId = _armazemFiltro.Value;
         }
 
-        var dialog = await DialogService.ShowAsync<DepositanteDialog>("Novo Depositante", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
-        {
-            await CarregarDados();
-            Snackbar.Add("Depositante criado com sucesso!", Severity.Success);
-        }
+        _showModal = true;
     }
 
     private async Task EditarDepositante(Depositante depositante)
     {
-        var parameters = new DialogParameters
+        await CarregarArmazensParaDialog();
+        _isEditando = true;
+        _depositanteIdEditando = depositante.Id;
+        _model = new DepositanteModel
         {
-            { nameof(DepositanteDialog.DepositanteId), depositante.Id },
-            { nameof(DepositanteDialog.ArmazemIdsPermitidos), _armazens.Select(a => a.Id).ToList() }
+            ArmazemId = depositante.ArmazemId,
+            Nome = depositante.Nome,
+            CNPJ = depositante.CNPJ,
+            CodigoExterno = depositante.CodigoExterno,
+            Endereco = depositante.Endereco
         };
+        _showModal = true;
+    }
 
-        var dialog = await DialogService.ShowAsync<DepositanteDialog>("Editar Depositante", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+    private void FecharModal()
+    {
+        _showModal = false;
+    }
 
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
+    private async Task Salvar()
+    {
+        _salvando = true;
+        try
         {
+            if (_isEditando && _depositanteIdEditando.HasValue)
+            {
+                var depositante = await Db.Depositantes.FindAsync(_depositanteIdEditando.Value);
+                if (depositante is not null)
+                {
+                    depositante.ArmazemId = _model.ArmazemId;
+                    depositante.Nome = _model.Nome;
+                    depositante.CNPJ = _model.CNPJ;
+                    depositante.CodigoExterno = _model.CodigoExterno;
+                    depositante.Endereco = _model.Endereco;
+                    await Db.SaveChangesAsync();
+                    Db.ChangeTracker.Clear();
+                }
+            }
+            else
+            {
+                var depositante = new Depositante
+                {
+                    ArmazemId = _model.ArmazemId,
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    CodigoExterno = _model.CodigoExterno,
+                    Endereco = _model.Endereco
+                };
+                Db.Depositantes.Add(depositante);
+                await Db.SaveChangesAsync();
+                Db.ChangeTracker.Clear();
+            }
+
+            _showModal = false;
             await CarregarDados();
-            Snackbar.Add("Depositante atualizado com sucesso!", Severity.Success);
+        }
+        finally
+        {
+            _salvando = false;
         }
     }
 
     private async Task ToggleAtivo(Depositante depositante)
     {
-        var acao = depositante.Ativo ? "desativar" : "ativar";
-        var confirmed = await DialogService.ShowMessageBox(
-            "Confirmar",
-            $"Deseja {acao} o depositante \"{depositante.Nome}\"?",
-            yesText: "Sim", cancelText: "Cancelar");
-
-        if (confirmed == true)
+        var entity = await Db.Depositantes.FindAsync(depositante.Id);
+        if (entity is not null)
         {
-            var entity = await Db.Depositantes.FindAsync(depositante.Id);
-            if (entity is not null)
-            {
-                entity.Ativo = !entity.Ativo;
-                await Db.SaveChangesAsync();
-                Db.ChangeTracker.Clear();
-                await CarregarDados();
-                Snackbar.Add($"Depositante {(entity.Ativo ? "ativado" : "desativado")} com sucesso!", Severity.Success);
-            }
+            entity.Ativo = !entity.Ativo;
+            await Db.SaveChangesAsync();
+            Db.ChangeTracker.Clear();
+            await CarregarDados();
         }
+    }
+
+    private class DepositanteModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Armazém é obrigatório")]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Selecione um armazém")]
+        public int ArmazemId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Nome { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(18)]
+        public string? CNPJ { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? CodigoExterno { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(500)]
+        public string? Endereco { get; set; }
     }
 }

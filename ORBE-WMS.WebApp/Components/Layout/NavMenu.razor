@@ -2,70 +2,96 @@
 
 @inject NavigationManager NavigationManager
 
-<MudNavMenu Dense="true">
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">ORBE WMS</a>
+    </div>
+</div>
 
-    @* === PRINCIPAL === *@
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
-        Dashboard
-    </MudNavLink>
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-    @* === OPERAÇÕES === *@
-    <MudNavGroup Title="Operações" Icon="@Icons.Material.Filled.PlayCircle" Expanded="true">
-        <MudNavLink Href="recebimento" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MoveToInbox">
-            Recebimento
-        </MudNavLink>
-        <MudNavLink Href="estoque" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory2">
-            Estoque
-        </MudNavLink>
-        <MudNavLink Href="separacao" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ContentCut">
-            Separação
-        </MudNavLink>
-        <MudNavLink Href="expedicao" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocalShipping">
-            Expedição
-        </MudNavLink>
-    </MudNavGroup>
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
 
-    @* === CADASTROS === *@
-    <MudNavGroup Title="Cadastros" Icon="@Icons.Material.Filled.FolderOpen" Expanded="false">
-        <MudNavLink Href="depositantes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Business">
-            Depositantes
-        </MudNavLink>
-    </MudNavGroup>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="recebimento">
+                <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Recebimento
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="estoque">
+                <span class="bi bi-box-nav-menu" aria-hidden="true"></span> Estoque
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="separacao">
+                <span class="bi bi-scissors-nav-menu" aria-hidden="true"></span> Separação
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="expedicao">
+                <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> Expedição
+            </NavLink>
+        </div>
 
-    @* === ADMINISTRAÇÃO (Admin only) === *@
-    <AuthorizeView Roles="Admin">
-        <Authorized>
-            <MudNavGroup Title="Administração" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
-                <MudNavLink Href="armazens" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Warehouse">
-                    Armazéns
-                </MudNavLink>
-                <MudNavLink Href="admin/usuarios" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">
-                    Usuários
-                </MudNavLink>
-            </MudNavGroup>
-        </Authorized>
-    </AuthorizeView>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="depositantes">
+                <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Depositantes
+            </NavLink>
+        </div>
 
-    <MudDivider Class="my-2" />
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="armazens">
+                        <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> Armazéns
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/usuarios">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Usuários
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
-    @* === CONTA === *@
-    <AuthorizeView>
-        <Authorized>
-            <MudNavLink Href="Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountCircle">
-                @context.User.Identity?.Name
-            </MudNavLink>
-            <MudNavLink Icon="@Icons.Material.Filled.Logout" OnClick="Logout">
-                Sair
-            </MudNavLink>
-        </Authorized>
-        <NotAuthorized>
-            <MudNavLink Href="Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">
-                Login
-            </MudNavLink>
-        </NotAuthorized>
-    </AuthorizeView>
-
-</MudNavMenu>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Manage">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="nav-link">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Register">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Login">
+                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
 
 @code {
     private string? currentUrl;
@@ -80,11 +106,6 @@
     {
         currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
         StateHasChanged();
-    }
-
-    private void Logout()
-    {
-        NavigationManager.NavigateTo("Account/Logout", forceLoad: true);
     }
 
     public void Dispose()

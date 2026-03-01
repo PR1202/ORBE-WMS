@@ -14,58 +14,45 @@
 
 <PageTitle>Login - ORBE WMS</PageTitle>
 
-<MudText Typo="Typo.h6" Align="Align.Center" Class="mb-4">Acessar sua conta</MudText>
+<h3 class="text-center mb-4">Acessar sua conta</h3>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
-    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+    <div class="alert alert-danger" role="alert">
+        @errorMessage
+    </div>
 }
 
 <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
     <DataAnnotationsValidator />
 
-    <div class="mud-input-control mud-input-control-margin-dense mb-4">
-        <label class="mud-input-label" for="Input.Email">Email</label>
-        <div class="login-field">
-            <InputText @bind-Value="Input.Email" id="Input.Email" class="login-input" autocomplete="username webauthn" placeholder="seu@email.com" />
-        </div>
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" placeholder="seu@email.com" />
+        <label for="Input.Email">Email</label>
         <ValidationMessage For="() => Input.Email" class="text-danger" />
     </div>
 
-    <div class="mud-input-control mud-input-control-margin-dense mb-4">
-        <label class="mud-input-label" for="Input.Password">Senha</label>
-        <div class="login-field">
-            <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="login-input" autocomplete="current-password" placeholder="••••••••" />
-        </div>
+    <div class="form-floating mb-3">
+        <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" placeholder="••••••••" />
+        <label for="Input.Password">Senha</label>
         <ValidationMessage For="() => Input.Password" class="text-danger" />
     </div>
 
-    <div class="mb-4">
-        <label class="login-checkbox">
-            <InputCheckbox @bind-Value="Input.RememberMe" />
-            <span>Lembrar de mim</span>
+    <div class="form-check mb-4">
+        <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+        <label class="form-check-label" for="rememberMe">
+            Lembrar de mim
         </label>
     </div>
 
-    <MudButton ButtonType="ButtonType.Submit"
-               Variant="Variant.Filled"
-               Color="Color.Primary"
-               FullWidth="true"
-               Size="Size.Large"
-               Class="mb-3">
-        Entrar
-    </MudButton>
+    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">Entrar</button>
 
-    <MudDivider Class="my-3" />
+    <hr class="my-3" />
 
-    <MudStack Spacing="1">
-        <MudLink Href="Account/ForgotPassword" Typo="Typo.body2" Color="Color.Primary">
-            Esqueceu sua senha?
-        </MudLink>
-        <MudLink Href="Account/ResendEmailConfirmation" Typo="Typo.body2" Color="Color.Primary">
-            Reenviar confirmação de email
-        </MudLink>
-    </MudStack>
+    <div class="d-flex flex-column gap-2 text-center mt-3">
+        <a href="Account/ForgotPassword" class="text-decoration-none">Esqueceu sua senha?</a>
+        <a href="Account/ResendEmailConfirmation" class="text-decoration-none">Reenviar confirmação de email</a>
+    </div>
 </EditForm>
 
 @code {

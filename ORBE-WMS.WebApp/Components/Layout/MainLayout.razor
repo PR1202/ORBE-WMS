@@ -1,73 +1,25 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
-<MudLayout>
-    <MudAppBar Elevation="1" Dense="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2">ORBE WMS</MudText>
-        <MudSpacer />
-        <MudTooltip Text="Alternar tema">
-            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                           Color="Color.Inherit" OnClick="ToggleDarkMode" />
-        </MudTooltip>
-    </MudAppBar>
-
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Mini"
-               OpenMiniOnHover="true">
+<div class="page">
+    <div class="sidebar">
         <NavMenu />
-    </MudDrawer>
+    </div>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+    <main>
+        <div class="top-row px-4">
+            <span class="top-row-brand">
+                <i class="bi bi-box-seam-fill me-2"></i>ORBE WMS
+            </span>
+        </div>
+
+        <article class="content px-4">
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        </article>
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
-
-@code {
-    private bool _drawerOpen = true;
-    private bool _isDarkMode = false;
-
-    private MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight
-        {
-            Primary = "#1565C0",
-            Secondary = "#00897B",
-            AppbarBackground = "#1565C0",
-            DrawerBackground = "#FAFAFA",
-            DrawerText = "#424242",
-            Background = "#F5F5F5"
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#42A5F5",
-            Secondary = "#4DB6AC",
-            AppbarBackground = "#1E1E2D",
-            DrawerBackground = "#1E1E2D",
-            Background = "#121212",
-            Surface = "#1E1E2D"
-        },
-        Typography = new Typography
-        {
-            Default = new DefaultTypography
-            {
-                FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
-            }
-        }
-    };
-
-    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
-    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
-}
