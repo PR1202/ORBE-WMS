@@ -1,0 +1,207 @@
+@implements IDisposable
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
+
+@inject TenantService TenantService
+@inject TabService TabService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<div class="tenant-selector">
+    <div class="tenant-dropdown-group">
+        <i class="bi bi-box-seam-fill tenant-icon"></i>
+        <select class="tenant-select" value="@_selectedArmazemId" @onchange="OnArmazemChanged" disabled="@(!_loaded)">
+            @if (!_loaded)
+            {
+                <option>Carregando...</option>
+            }
+            else
+            {
+                @foreach (var arm in _armazens)
+                {
+                    <option value="@arm.Id">@arm.Nome</option>
+                }
+            }
+        </select>
+    </div>
+
+    <div class="tenant-dropdown-group">
+        <i class="bi bi-building tenant-icon"></i>
+        <select class="tenant-select" value="@_selectedDepositanteId" @onchange="OnDepositanteChanged" disabled="@(!_loaded || !_depositantes.Any())">
+            @if (!_depositantes.Any() && _loaded)
+            {
+                <option>Sem depositantes</option>
+            }
+            else
+            {
+                @foreach (var dep in _depositantes)
+                {
+                    <option value="@dep.Id">@dep.Nome</option>
+                }
+            }
+        </select>
+    </div>
+</div>
+
+@code {
+    private List<ArmazemItem> _armazens = [];
+    private List<DepositanteItem> _depositantes = [];
+    private int _selectedArmazemId;
+    private int _selectedDepositanteId;
+    private bool _loaded;
+
+    // Mapeamento componentKey <-> tipo (espelhado do MainLayout)
+    private static readonly Dictionary<string, (string Title, string Icon, Type Component)> TabMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["dashboard"]    = ("Dashboard",    "bi-house-door-fill",    typeof(Pages.Home)),
+        ["recebimento"]  = ("Recebimento",  "bi-box-arrow-in-right", typeof(Pages.Recebimento)),
+        ["estoque"]      = ("Estoque",      "bi-box",                typeof(Pages.Estoque)),
+        ["separacao"]    = ("Separação",    "bi-scissors",           typeof(Pages.Separacao)),
+        ["expedicao"]    = ("Expedição",    "bi-truck",              typeof(Pages.Expedicao)),
+        ["depositantes"] = ("Depositantes", "bi-building",           typeof(Pages.Depositantes)),
+        ["armazens"]     = ("Armazéns",     "bi-building-add",       typeof(Pages.Armazens)),
+        ["usuarios"]     = ("Usuários",     "bi-people-fill",        typeof(Pages.Usuarios)),
+    };
+
+    private static readonly Dictionary<Type, string> TypeToKey = TabMap.ToDictionary(kv => kv.Value.Component, kv => kv.Key);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarArmazensAsync();
+
+        if (_armazens.Any())
+        {
+            _selectedArmazemId = _armazens.First().Id;
+            await CarregarDepositantesAsync(_selectedArmazemId);
+            AplicarContexto();
+        }
+
+        _loaded = true;
+    }
+
+    private async Task CarregarArmazensAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        if (user.IsInRole("Admin"))
+        {
+            // Admin vê todos os armazéns ativos
+            _armazens = await db.Armazens
+                .Where(a => a.Ativo)
+                .OrderBy(a => a.Nome)
+                .Select(a => new ArmazemItem { Id = a.Id, Nome = a.Nome })
+                .ToListAsync();
+        }
+        else
+        {
+            // Usuário comum vê apenas armazéns vinculados
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userId is not null)
+            {
+                _armazens = await db.UsuarioArmazens
+                    .Where(ua => ua.UsuarioId == userId)
+                    .Include(ua => ua.Armazem)
+                    .Where(ua => ua.Armazem.Ativo)
+                    .OrderBy(ua => ua.Armazem.Nome)
+                    .Select(ua => new ArmazemItem { Id = ua.Armazem.Id, Nome = ua.Armazem.Nome })
+                    .ToListAsync();
+            }
+        }
+    }
+
+    private async Task CarregarDepositantesAsync(int armazemId)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _depositantes = await db.Depositantes
+            .Where(d => d.ArmazemId == armazemId && d.Ativo)
+            .OrderBy(d => d.Nome)
+            .Select(d => new DepositanteItem { Id = d.Id, Nome = d.Nome })
+            .ToListAsync();
+
+        _selectedDepositanteId = _depositantes.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private async Task OnArmazemChanged(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var novoArmazemId)) return;
+        if (novoArmazemId == _selectedArmazemId) return;
+
+        // Salvar abas do contexto anterior
+        SalvarAbasDoContextoAtual();
+
+        _selectedArmazemId = novoArmazemId;
+
+        // Carregar depositantes do novo armazém
+        await CarregarDepositantesAsync(novoArmazemId);
+
+        // Aplicar novo contexto (dispara OnContextChanged → MainLayout restaura abas)
+        AplicarContexto();
+    }
+
+    private void OnDepositanteChanged(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var novoDepositanteId)) return;
+        if (novoDepositanteId == _selectedDepositanteId) return;
+
+        // Salvar abas do contexto anterior
+        SalvarAbasDoContextoAtual();
+
+        _selectedDepositanteId = novoDepositanteId;
+
+        // Aplicar novo contexto
+        AplicarContexto();
+    }
+
+    private void AplicarContexto()
+    {
+        var armNome = _armazens.FirstOrDefault(a => a.Id == _selectedArmazemId)?.Nome ?? "";
+        var depNome = _depositantes.FirstOrDefault(d => d.Id == _selectedDepositanteId)?.Nome ?? "";
+
+        if (_selectedArmazemId > 0 && _selectedDepositanteId > 0)
+        {
+            TenantService.DefinirContexto(_selectedArmazemId, armNome, _selectedDepositanteId, depNome);
+        }
+    }
+
+    private void SalvarAbasDoContextoAtual()
+    {
+        var key = TenantService.ContextoKey;
+        if (key is null) return;
+
+        var tabStates = TabService.Tabs.Select(t => new TenantService.SavedTabState
+        {
+            Key = TypeToKey.GetValueOrDefault(t.ComponentType, ""),
+            Pinned = t.IsPinned,
+            Active = t.IsActive
+        }).Where(s => !string.IsNullOrEmpty(s.Key)).ToList();
+
+        TenantService.SalvarAbasDoContexto(key, tabStates);
+    }
+
+    public void Dispose()
+    {
+        // Nenhuma assinatura de eventos neste componente
+    }
+
+    // ── DTOs internos ──
+
+    private class ArmazemItem
+    {
+        public int Id { get; set; }
+        public string Nome { get; set; } = "";
+    }
+
+    private class DepositanteItem
+    {
+        public int Id { get; set; }
+        public string Nome { get; set; } = "";
+    }
+}

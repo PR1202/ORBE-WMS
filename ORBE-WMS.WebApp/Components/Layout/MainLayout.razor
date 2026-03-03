@@ -5,6 +5,7 @@
 @using ORBE_WMS.WebApp.Services
 @using Microsoft.AspNetCore.WebUtilities
 @inject TabService TabService
+@inject TenantService TenantService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
@@ -18,6 +19,7 @@
             <span class="top-row-brand">
                 <i class="bi bi-box-seam-fill me-2"></i>ORBE WMS
             </span>
+            <TenantSelector />
         </div>
 
         @if (_isAccountPage)
@@ -96,6 +98,7 @@
     protected override void OnInitialized()
     {
         TabService.OnTabsChanged += HandleTabsChanged;
+        TenantService.OnContextChanged += HandleContextChanged;
         NavigationManager.LocationChanged += OnLocationChanged;
         UpdateAccountPageFlag();
     }
@@ -109,9 +112,56 @@
         }
     }
 
+    /// <summary>
+    /// Chamado quando o TenantSelector troca de contexto (armazém/depositante).
+    /// Restaura as abas do novo contexto ou abre Dashboard padrão.
+    /// </summary>
+    private async void HandleContextChanged()
+    {
+        var contextoKey = TenantService.ContextoKey;
+
+        if (contextoKey is not null)
+        {
+            var savedTabs = TenantService.RestaurarAbasDoContexto(contextoKey);
+
+            TabService.ClearAll();
+
+            if (savedTabs is { Count: > 0 })
+            {
+                // Restaurar abas do contexto
+                foreach (var st in savedTabs)
+                {
+                    if (TabMap.TryGetValue(st.Key, out var info))
+                    {
+                        if (st.Pinned)
+                            TabService.OpenPinnedTab(info.Title, info.Icon, info.Component);
+                        else
+                            TabService.OpenTab(info.Title, info.Icon, info.Component);
+                    }
+                }
+
+                // Ativar a aba que estava ativa
+                var activeKey = savedTabs.FirstOrDefault(s => s.Active)?.Key;
+                if (activeKey != null && TabMap.TryGetValue(activeKey, out var activeInfo))
+                {
+                    var activeTab = TabService.Tabs.FirstOrDefault(t => t.ComponentType == activeInfo.Component);
+                    if (activeTab != null)
+                        TabService.ActivateTab(activeTab.Id);
+                }
+            }
+            else
+            {
+                // Sem histórico: abrir Dashboard padrão
+                TabService.OpenPinnedTab("Dashboard", "bi-house-door-fill", typeof(Pages.Home));
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task RestoreTabsAsync()
     {
-        // 1. Tentar restaurar abas do sessionStorage
+        // 1. Tentar restaurar abas do sessionStorage (para refresh de página)
         var json = await JS.InvokeAsync<string>("tabStorage.load");
         var restored = false;
 
@@ -122,9 +172,8 @@
                 var savedTabs = JsonSerializer.Deserialize<List<SavedTab>>(json);
                 if (savedTabs is { Count: > 0 })
                 {
-                    // Limpar abas existentes e restaurar
                     TabService.ClearAll();
-                    
+
                     foreach (var st in savedTabs)
                     {
                         if (TabMap.TryGetValue(st.Key, out var info))
@@ -136,7 +185,6 @@
                         }
                     }
 
-                    // Ativar a aba que estava ativa
                     var activeKey = savedTabs.FirstOrDefault(s => s.Active)?.Key;
                     if (activeKey != null && TabMap.TryGetValue(activeKey, out var activeInfo))
                     {
@@ -224,6 +272,7 @@
     public void Dispose()
     {
         TabService.OnTabsChanged -= HandleTabsChanged;
+        TenantService.OnContextChanged -= HandleContextChanged;
         NavigationManager.LocationChanged -= OnLocationChanged;
     }
 

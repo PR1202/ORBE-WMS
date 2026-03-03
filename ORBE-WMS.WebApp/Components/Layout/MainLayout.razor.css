@@ -20,7 +20,7 @@ main {
     background-color: var(--orbe-surface, #ffffff);
     border-bottom: 1px solid var(--orbe-border, #dee2e6);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    justify-content: flex-end;
+    justify-content: flex-start;
     height: 3.5rem;
     display: flex;
     align-items: center;
@@ -31,7 +31,6 @@ main {
     font-size: 0.85rem;
     color: var(--orbe-text-muted, #6c757d);
     letter-spacing: 0.02em;
-    margin-right: auto;
 }
 
 .top-row ::deep a,
