@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ORBE_WMS.WebApp.Data;
+namespace ORBE_WMS.Domain.Entities;
 
-public class Armazem
+public class Depositante
 {
     public int Id { get; set; }
+
+    public int ArmazemId { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -12,6 +14,9 @@ public class Armazem
 
     [MaxLength(18)]
     public string? CNPJ { get; set; }
+
+    [MaxLength(100)]
+    public string? CodigoExterno { get; set; }
 
     [MaxLength(500)]
     public string? Endereco { get; set; }
@@ -21,7 +26,6 @@ public class Armazem
     public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
 
     // Navegação
-    public ICollection<Depositante> Depositantes { get; set; } = [];
-    public ICollection<UsuarioArmazem> Usuarios { get; set; } = [];
+    public Armazem Armazem { get; set; } = null!;
     public ICollection<ItemEstoque> ItensEstoque { get; set; } = [];
 }

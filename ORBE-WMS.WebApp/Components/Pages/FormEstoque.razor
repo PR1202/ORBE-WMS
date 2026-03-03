@@ -1,7 +1,8 @@
 @* Formulário de Item de Estoque — renderizado como aba *@
 
 @using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.Domain.Entities
+@using ORBE_WMS.Infrastructure.Persistence
 @using ORBE_WMS.WebApp.Services
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory

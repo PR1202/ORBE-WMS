@@ -14,11 +14,17 @@
     <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.2" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ORBE-WMS.ServiceDefaults\ORBE-WMS.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Domain\ORBE-WMS.Domain.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Application\ORBE-WMS.Application.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Infrastructure\ORBE-WMS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,11 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ORBE-WMS.ServiceDefaults\ORBE-WMS.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Domain\ORBE-WMS.Domain.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Application\ORBE-WMS.Application.csproj" />
+    <ProjectReference Include="..\ORBE-WMS.Infrastructure\ORBE-WMS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

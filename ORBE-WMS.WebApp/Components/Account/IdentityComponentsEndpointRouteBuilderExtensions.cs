@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ORBE_WMS.WebApp.Components.Account.Pages;
 using ORBE_WMS.WebApp.Components.Account.Pages.Manage;
-using ORBE_WMS.WebApp.Data;
+using ORBE_WMS.Domain.Entities;
+using ORBE_WMS.Infrastructure.Persistence;
 
 namespace Microsoft.AspNetCore.Routing;
 

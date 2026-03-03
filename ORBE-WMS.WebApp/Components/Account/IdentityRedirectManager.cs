@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
-using ORBE_WMS.WebApp.Data;
+using ORBE_WMS.Domain.Entities;
+using ORBE_WMS.Infrastructure.Persistence;
 
 namespace ORBE_WMS.WebApp.Components.Account;
 

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ORBE_WMS.WebApp.Data;
+namespace ORBE_WMS.Domain.Entities;
 
 /// <summary>
 /// Tabela de junção entre ApplicationUser e Armazem.

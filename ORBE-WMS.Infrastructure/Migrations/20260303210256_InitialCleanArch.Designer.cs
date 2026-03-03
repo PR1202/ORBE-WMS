@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using ORBE_WMS.WebApp.Data;
+using ORBE_WMS.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace ORBE_WMS.WebApp.Migrations
+namespace ORBE_WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260213131927_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260303210256_InitialCleanArch")]
+    partial class InitialCleanArch
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -188,7 +188,7 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.ApplicationUser", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -262,7 +262,7 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.Armazem", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.Armazem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -298,7 +298,7 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.ToTable("Armazens");
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.Depositante", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.Depositante", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -341,7 +341,68 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.ToTable("Depositantes");
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.UsuarioArmazem", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.ItemEstoque", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ArmazemId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("CodigoProduto")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DataValidade")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DepositanteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Localizacao")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Lote")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("UnidadeMedida")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArmazemId");
+
+                    b.HasIndex("CodigoProduto");
+
+                    b.HasIndex("DepositanteId");
+
+                    b.ToTable("ItensEstoque");
+                });
+
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.UsuarioArmazem", b =>
                 {
                     b.Property<string>("UsuarioId")
                         .HasColumnType("nvarchar(450)");
@@ -372,7 +433,7 @@ namespace ORBE_WMS.WebApp.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", null)
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -381,7 +442,7 @@ namespace ORBE_WMS.WebApp.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", null)
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -390,7 +451,7 @@ namespace ORBE_WMS.WebApp.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserPasskey<string>", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", null)
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -447,7 +508,7 @@ namespace ORBE_WMS.WebApp.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", null)
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -456,16 +517,16 @@ namespace ORBE_WMS.WebApp.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", null)
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.Depositante", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.Depositante", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.Armazem", "Armazem")
+                    b.HasOne("ORBE_WMS.Domain.Entities.Armazem", "Armazem")
                         .WithMany("Depositantes")
                         .HasForeignKey("ArmazemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -474,15 +535,34 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.Navigation("Armazem");
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.UsuarioArmazem", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.ItemEstoque", b =>
                 {
-                    b.HasOne("ORBE_WMS.WebApp.Data.Armazem", "Armazem")
+                    b.HasOne("ORBE_WMS.Domain.Entities.Armazem", "Armazem")
+                        .WithMany("ItensEstoque")
+                        .HasForeignKey("ArmazemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ORBE_WMS.Domain.Entities.Depositante", "Depositante")
+                        .WithMany("ItensEstoque")
+                        .HasForeignKey("DepositanteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Armazem");
+
+                    b.Navigation("Depositante");
+                });
+
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.UsuarioArmazem", b =>
+                {
+                    b.HasOne("ORBE_WMS.Domain.Entities.Armazem", "Armazem")
                         .WithMany("Usuarios")
                         .HasForeignKey("ArmazemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ORBE_WMS.WebApp.Data.ApplicationUser", "Usuario")
+                    b.HasOne("ORBE_WMS.Domain.Entities.ApplicationUser", "Usuario")
                         .WithMany("Armazens")
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -493,16 +573,23 @@ namespace ORBE_WMS.WebApp.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.ApplicationUser", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Navigation("Armazens");
                 });
 
-            modelBuilder.Entity("ORBE_WMS.WebApp.Data.Armazem", b =>
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.Armazem", b =>
                 {
                     b.Navigation("Depositantes");
 
+                    b.Navigation("ItensEstoque");
+
                     b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("ORBE_WMS.Domain.Entities.Depositante", b =>
+                {
+                    b.Navigation("ItensEstoque");
                 });
 #pragma warning restore 612, 618
         }

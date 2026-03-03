@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ORBE_WMS.WebApp.Components;
 using ORBE_WMS.WebApp.Components.Account;
-using ORBE_WMS.WebApp.Data;
 using ORBE_WMS.WebApp.Services;
+using ORBE_WMS.Domain.Entities;
+using ORBE_WMS.Infrastructure;
+using ORBE_WMS.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,8 +28,6 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 builder.AddSqlServerDbContext<ApplicationDbContext>("orbeDb");
-builder.Services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(sp =>
-    new ScopedDbContextFactory<ApplicationDbContext>(sp));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
@@ -42,7 +42,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
-// Multi-tenant: serviço que mantém o armazém ativo na sessão
+// Infrastructure: repositórios e serviços de Application
+builder.Services.AddInfrastructure();
+
+// UI Services: serviços que pertencem exclusivamente à camada de UI
 builder.Services.AddScoped<TenantService>();
 builder.Services.AddScoped<TabService>();
 builder.Services.AddScoped<ToastService>();

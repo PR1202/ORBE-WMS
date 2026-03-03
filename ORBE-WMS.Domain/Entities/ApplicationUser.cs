@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
-namespace ORBE_WMS.WebApp.Data;
+namespace ORBE_WMS.Domain.Entities;
 
 public class ApplicationUser : IdentityUser
 {
@@ -14,4 +14,3 @@ public class ApplicationUser : IdentityUser
     // Navegação: armazéns aos quais o usuário tem acesso
     public ICollection<UsuarioArmazem> Armazens { get; set; } = [];
 }
-

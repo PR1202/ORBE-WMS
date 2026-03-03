@@ -1,8 +1,9 @@
-﻿@page "/Account/LoginWith2fa"
+@page "/Account/LoginWith2fa"
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
-@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.Domain.Entities
+@using ORBE_WMS.Infrastructure.Persistence
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
