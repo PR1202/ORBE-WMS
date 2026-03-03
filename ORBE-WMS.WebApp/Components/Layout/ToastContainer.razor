@@ -1,0 +1,85 @@
+@implements IDisposable
+
+@using ORBE_WMS.WebApp.Services
+
+@inject ToastService ToastService
+
+<div class="toast-container-wrapper">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast-item toast-@toast.Type.ToString().ToLower() @(toast.Removing ? "toast-removing" : "")">
+            <div class="toast-icon-area">
+                <i class="bi @GetIcon(toast.Type)"></i>
+            </div>
+            <div class="toast-message">@toast.Message</div>
+            <button class="toast-dismiss" @onclick="() => RemoveToast(toast.Id)">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastDisplayItem> _toasts = [];
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnToast += HandleToast;
+    }
+
+    private async void HandleToast(ToastMessage message)
+    {
+        var item = new ToastDisplayItem
+        {
+            Id = message.Id,
+            Type = message.Type,
+            Message = message.Message
+        };
+
+        _toasts.Add(item);
+        await InvokeAsync(StateHasChanged);
+
+        // Auto-dismiss após 3 segundos
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            await InvokeAsync(() => RemoveToast(item.Id));
+        });
+    }
+
+    private async void RemoveToast(Guid id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast is null) return;
+
+        // Iniciar animação de saída
+        toast.Removing = true;
+        StateHasChanged();
+
+        await Task.Delay(300); // Duração da animação
+        _toasts.Remove(toast);
+        StateHasChanged();
+    }
+
+    private static string GetIcon(ToastType type) => type switch
+    {
+        ToastType.Success => "bi-check-circle-fill",
+        ToastType.Error => "bi-x-circle-fill",
+        ToastType.Warning => "bi-exclamation-triangle-fill",
+        ToastType.Info => "bi-info-circle-fill",
+        _ => "bi-info-circle-fill"
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnToast -= HandleToast;
+    }
+
+    private class ToastDisplayItem
+    {
+        public Guid Id { get; set; }
+        public ToastType Type { get; set; }
+        public string Message { get; set; } = "";
+        public bool Removing { get; set; }
+    }
+}

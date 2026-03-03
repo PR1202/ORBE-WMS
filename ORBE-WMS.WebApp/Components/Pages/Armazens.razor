@@ -1,10 +1,15 @@
 @* Componente renderizado dentro do sistema de abas *@
+@implements IDisposable
 
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject TabService TabService
+@inject ToastService ToastService
+@inject IJSRuntime JS
 
 <PageTitle>Armazéns - ORBE WMS</PageTitle>
 
@@ -66,10 +71,13 @@ else
                                     <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => EditarArmazem(context)">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
-                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success")" 
+                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success") me-1" 
                                             title="@(context.Ativo ? "Desativar" : "Ativar")"
                                             @onclick="() => ToggleAtivo(context)">
                                         <i class="bi @(context.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => Excluir(context)">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -87,68 +95,11 @@ else
     </div>
 }
 
-@if (_showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-building me-2"></i>
-                        @(_isEditando ? "Editar Armazém" : "Novo Armazém")
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="_model" OnValidSubmit="Salvar">
-                        <DataAnnotationsValidator />
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Nome *</label>
-                            <InputText @bind-Value="_model.Nome" class="form-control" />
-                            <ValidationMessage For="() => _model.Nome" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">CNPJ</label>
-                            <InputText @bind-Value="_model.CNPJ" class="form-control" placeholder="00.000.000/0000-00" />
-                            <ValidationMessage For="() => _model.CNPJ" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Endereço</label>
-                            <InputTextArea @bind-Value="_model.Endereco" class="form-control" rows="2" />
-                            <ValidationMessage For="() => _model.Endereco" class="text-danger small" />
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-light" @onclick="FecharModal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_salvando">
-                                @if (_salvando)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                }
-                                Salvar
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private List<Armazem> _armazens = [];
     private bool _carregando = true;
     private string _searchString = "";
-
-    // Modal State
-    private bool _showModal = false;
-    private bool _isEditando = false;
-    private bool _salvando = false;
-    private int? _armazemIdEditando;
-    private ArmazemModel _model = new();
+    private bool _wasActive = true;
 
     private IEnumerable<Armazem> ArmazensFiltrados => _armazens.Where(x =>
         string.IsNullOrWhiteSpace(_searchString) ||
@@ -159,7 +110,27 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        TabService.OnTabsChanged += HandleTabFocus;
         await CarregarDados();
+    }
+
+    private async void HandleTabFocus()
+    {
+        var isActive = TabService.ActiveTab?.ComponentType == typeof(Armazens);
+        if (isActive && !_wasActive)
+        {
+            await InvokeAsync(async () =>
+            {
+                await CarregarDados();
+                StateHasChanged();
+            });
+        }
+        _wasActive = isActive;
+    }
+
+    public void Dispose()
+    {
+        TabService.OnTabsChanged -= HandleTabFocus;
     }
 
     private async Task CarregarDados()
@@ -172,66 +143,18 @@ else
 
     private void CriarArmazem()
     {
-        _isEditando = false;
-        _armazemIdEditando = null;
-        _model = new ArmazemModel();
-        _showModal = true;
+        TabService.OpenFormTab("✚ Novo Armazém", "bi-plus-circle", typeof(FormArmazem), new Dictionary<string, object>
+        {
+            ["ArmazemId"] = 0
+        });
     }
 
     private void EditarArmazem(Armazem armazem)
     {
-        _isEditando = true;
-        _armazemIdEditando = armazem.Id;
-        _model = new ArmazemModel
+        TabService.OpenFormTab($"✏ Editar: {armazem.Nome}", "bi-pencil-square", typeof(FormArmazem), new Dictionary<string, object>
         {
-            Nome = armazem.Nome,
-            CNPJ = armazem.CNPJ,
-            Endereco = armazem.Endereco
-        };
-        _showModal = true;
-    }
-
-    private void FecharModal()
-    {
-        _showModal = false;
-    }
-
-    private async Task Salvar()
-    {
-        _salvando = true;
-        try
-        {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            if (_isEditando && _armazemIdEditando.HasValue)
-            {
-                var armazem = await db.Armazens.FindAsync(_armazemIdEditando.Value);
-                if (armazem is not null)
-                {
-                    armazem.Nome = _model.Nome;
-                    armazem.CNPJ = _model.CNPJ;
-                    armazem.Endereco = _model.Endereco;
-                    await db.SaveChangesAsync();
-                }
-            }
-            else
-            {
-                var armazem = new Armazem
-                {
-                    Nome = _model.Nome,
-                    CNPJ = _model.CNPJ,
-                    Endereco = _model.Endereco
-                };
-                db.Armazens.Add(armazem);
-                await db.SaveChangesAsync();
-            }
-
-            _showModal = false;
-            await CarregarDados();
-        }
-        finally
-        {
-            _salvando = false;
-        }
+            ["ArmazemId"] = armazem.Id
+        });
     }
 
     private async Task ToggleAtivo(Armazem armazem)
@@ -242,20 +165,31 @@ else
         {
             entity.Ativo = !entity.Ativo;
             await db.SaveChangesAsync();
+            var status = entity.Ativo ? "ativado" : "desativado";
+            ToastService.Success($"Armazém \"{entity.Nome}\" {status} com sucesso!");
             await CarregarDados();
         }
     }
-
-    private class ArmazemModel
+    private async Task Excluir(Armazem armazem)
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
-        [System.ComponentModel.DataAnnotations.MaxLength(200)]
-        public string Nome { get; set; } = string.Empty;
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o armazém \"{armazem.Nome}\"? Depositantes e vínculos de usuários serão removidos.");
+        if (!confirmado) return;
 
-        [System.ComponentModel.DataAnnotations.MaxLength(18)]
-        public string? CNPJ { get; set; }
-
-        [System.ComponentModel.DataAnnotations.MaxLength(500)]
-        public string? Endereco { get; set; }
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var entity = await db.Armazens.FindAsync(armazem.Id);
+            if (entity is not null)
+            {
+                db.Armazens.Remove(entity);
+                await db.SaveChangesAsync();
+                ToastService.Success($"Armazém \"{armazem.Nome}\" excluído com sucesso!");
+                await CarregarDados();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao excluir armazém: {ex.Message}");
+        }
     }
 }

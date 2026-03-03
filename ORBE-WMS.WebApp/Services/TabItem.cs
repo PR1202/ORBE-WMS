@@ -8,4 +8,10 @@ public class TabItem
     public Type ComponentType { get; set; } = default!;
     public bool IsActive { get; set; }
     public bool IsPinned { get; set; }
+
+    /// <summary>
+    /// Parâmetros passados ao DynamicComponent.
+    /// Usado para formulários receberem EntityId, TabId, etc.
+    /// </summary>
+    public Dictionary<string, object>? Parameters { get; set; }
 }

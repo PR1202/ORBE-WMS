@@ -55,7 +55,7 @@
                 @foreach (var tab in TabService.Tabs)
                 {
                     <div style="display: @(tab.IsActive ? "block" : "none")">
-                        <DynamicComponent Type="tab.ComponentType" />
+                        <DynamicComponent Type="tab.ComponentType" Parameters="tab.Parameters" />
                     </div>
                 }
             </div>
@@ -68,6 +68,8 @@
         }
     </main>
 </div>
+
+<ToastContainer />
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

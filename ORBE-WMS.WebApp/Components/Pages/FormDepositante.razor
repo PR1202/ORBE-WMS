@@ -1,0 +1,231 @@
+@* Formulário de Depositante — renderizado como aba *@
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject TabService TabService
+@inject ToastService ToastService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@(_isEdit ? $"Editar: {_model.Nome}" : "Novo Depositante") - ORBE WMS</PageTitle>
+
+<div class="form-page-container">
+    <div class="form-card">
+        <div class="form-card-header">
+            <div class="form-card-title">
+                <i class="bi @(_isEdit ? "bi-pencil-square" : "bi-plus-circle") me-2"></i>
+                @(_isEdit ? "Editar Depositante" : "Novo Depositante")
+            </div>
+            @if (_isEdit)
+            {
+                <span class="badge bg-info text-dark">ID: @DepositanteId</span>
+            }
+        </div>
+
+        <div class="form-card-body">
+            @if (_carregando)
+            {
+                <div class="progress" style="height: 3px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated w-100" role="progressbar"></div>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="_model" OnValidSubmit="Salvar">
+                    <DataAnnotationsValidator />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Armazém <span class="text-danger">*</span></label>
+                            <InputSelect @bind-Value="_model.ArmazemId" class="form-select form-select-lg">
+                                <option value="0">Selecione um armazém</option>
+                                @foreach (var a in _armazens)
+                                {
+                                    <option value="@a.Id">@a.Nome</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="() => _model.ArmazemId" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Nome <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.Nome" class="form-control form-control-lg" placeholder="Nome do depositante" />
+                            <ValidationMessage For="() => _model.Nome" class="text-danger small mt-1" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">CNPJ</label>
+                            <InputText @bind-Value="_model.CNPJ" class="form-control" placeholder="00.000.000/0000-00" />
+                            <ValidationMessage For="() => _model.CNPJ" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Código Externo</label>
+                            <InputText @bind-Value="_model.CodigoExterno" class="form-control" placeholder="Código no sistema externo" />
+                            <ValidationMessage For="() => _model.CodigoExterno" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Endereço</label>
+                            <InputTextArea @bind-Value="_model.Endereco" class="form-control" rows="1" placeholder="Endereço do depositante" />
+                            <ValidationMessage For="() => _model.Endereco" class="text-danger small mt-1" />
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light px-4" @onclick="Cancelar">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary px-4" disabled="@_salvando">
+                            @if (_salvando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            }
+                            <i class="bi bi-check-lg me-1"></i> Salvar
+                        </button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? DepositanteId { get; set; }
+    [Parameter] public Guid TabId { get; set; }
+
+    private bool _isEdit;
+    private bool _salvando;
+    private bool _carregando = true;
+    private List<Armazem> _armazens = [];
+    private DepositanteModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEdit = DepositanteId.HasValue && DepositanteId.Value > 0;
+
+        // Carregar armazéns disponíveis
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isAdmin = user.IsInRole("Admin");
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        if (isAdmin)
+        {
+            _armazens = await db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
+        }
+        else if (userId is not null)
+        {
+            var armazemIds = await db.UsuarioArmazens.AsNoTracking()
+                .Where(ua => ua.UsuarioId == userId)
+                .Select(ua => ua.ArmazemId)
+                .ToListAsync();
+
+            _armazens = await db.Armazens.AsNoTracking()
+                .Where(a => a.Ativo && armazemIds.Contains(a.Id))
+                .OrderBy(a => a.Nome)
+                .ToListAsync();
+        }
+
+        if (_isEdit)
+        {
+            var depositante = await db.Depositantes.FindAsync(DepositanteId!.Value);
+            if (depositante is not null)
+            {
+                _model = new DepositanteModel
+                {
+                    ArmazemId = depositante.ArmazemId,
+                    Nome = depositante.Nome,
+                    CNPJ = depositante.CNPJ,
+                    CodigoExterno = depositante.CodigoExterno,
+                    Endereco = depositante.Endereco
+                };
+            }
+        }
+
+        _carregando = false;
+    }
+
+    private async Task Salvar()
+    {
+        _salvando = true;
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            if (_isEdit)
+            {
+                var depositante = await db.Depositantes.FindAsync(DepositanteId!.Value);
+                if (depositante is not null)
+                {
+                    depositante.ArmazemId = _model.ArmazemId;
+                    depositante.Nome = _model.Nome;
+                    depositante.CNPJ = _model.CNPJ;
+                    depositante.CodigoExterno = _model.CodigoExterno;
+                    depositante.Endereco = _model.Endereco;
+                    await db.SaveChangesAsync();
+                    ToastService.Success($"Depositante \"{_model.Nome}\" atualizado com sucesso!");
+                }
+            }
+            else
+            {
+                var depositante = new Depositante
+                {
+                    ArmazemId = _model.ArmazemId,
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    CodigoExterno = _model.CodigoExterno,
+                    Endereco = _model.Endereco
+                };
+                db.Depositantes.Add(depositante);
+                await db.SaveChangesAsync();
+                ToastService.Success($"Depositante \"{_model.Nome}\" criado com sucesso!");
+            }
+
+            TabService.CloseFormAndActivateListing(TabId, typeof(Depositantes));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao salvar depositante: {ex.Message}");
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        TabService.CloseTab(TabId);
+    }
+
+    private class DepositanteModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Armazém é obrigatório")]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Selecione um armazém")]
+        public int ArmazemId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Nome { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(18)]
+        public string? CNPJ { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? CodigoExterno { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(500)]
+        public string? Endereco { get; set; }
+    }
+}

@@ -74,6 +74,34 @@ public class TabService
     }
 
     /// <summary>
+    /// Abre uma aba de formulário. Sempre cria uma nova aba (permite duplicatas).
+    /// Retorna o Id da aba criada para que o formulário possa se auto-fechar.
+    /// </summary>
+    public Guid OpenFormTab(string title, string icon, Type componentType, Dictionary<string, object>? parameters = null)
+    {
+        foreach (var tab in _tabs)
+            tab.IsActive = false;
+
+        var newTab = new TabItem
+        {
+            Title = title,
+            Icon = icon,
+            ComponentType = componentType,
+            IsActive = true,
+            Parameters = parameters
+        };
+
+        _tabs.Add(newTab);
+
+        // Injeta o TabId nos parâmetros para que o componente possa se fechar
+        newTab.Parameters ??= new Dictionary<string, object>();
+        newTab.Parameters["TabId"] = newTab.Id;
+
+        OnTabsChanged?.Invoke();
+        return newTab.Id;
+    }
+
+    /// <summary>
     /// Ativa (exibe) uma aba pelo Id.
     /// </summary>
     public void ActivateTab(Guid tabId)
@@ -103,6 +131,37 @@ public class TabService
             // Ativa a aba anterior, ou a primeira se não houver anterior
             var newIndex = Math.Min(index, _tabs.Count - 1);
             _tabs[newIndex].IsActive = true;
+        }
+
+        OnTabsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Fecha uma aba de formulário e ativa a aba de listagem correspondente.
+    /// </summary>
+    public void CloseFormAndActivateListing(Guid formTabId, Type listingComponentType)
+    {
+        // Fechar a aba do formulário
+        var formTab = _tabs.FirstOrDefault(t => t.Id == formTabId);
+        if (formTab is not null)
+        {
+            _tabs.Remove(formTab);
+        }
+
+        // Ativar a aba da listagem
+        var listTab = _tabs.FirstOrDefault(t => t.ComponentType == listingComponentType);
+        if (listTab is not null)
+        {
+            foreach (var tab in _tabs)
+                tab.IsActive = false;
+            listTab.IsActive = true;
+        }
+        else if (_tabs.Count > 0)
+        {
+            // Fallback: ativar a última aba
+            foreach (var tab in _tabs)
+                tab.IsActive = false;
+            _tabs[^1].IsActive = true;
         }
 
         OnTabsChanged?.Invoke();

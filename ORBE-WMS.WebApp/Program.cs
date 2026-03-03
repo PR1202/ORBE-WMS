@@ -45,6 +45,7 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 // Multi-tenant: serviço que mantém o armazém ativo na sessão
 builder.Services.AddScoped<TenantService>();
 builder.Services.AddScoped<TabService>();
+builder.Services.AddScoped<ToastService>();
 
 var app = builder.Build();
 

@@ -1,12 +1,17 @@
 @* Componente renderizado dentro do sistema de abas *@
+@implements IDisposable
 
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
+@inject TabService TabService
+@inject ToastService ToastService
+@inject IJSRuntime JS
 
 <PageTitle>Usuários - ORBE WMS</PageTitle>
 
@@ -83,10 +88,13 @@ else
                                     <button class="btn btn-sm btn-outline-secondary me-1" title="Gerenciar Armazéns" @onclick="() => GerenciarArmazens(context)">
                                         <i class="bi bi-building"></i>
                                     </button>
-                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success")" 
+                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success") me-1" 
                                             title="@(context.Ativo ? "Desativar" : "Ativar")"
                                             @onclick="() => ToggleAtivo(context)">
                                         <i class="bi @(context.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => Excluir(context)">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -104,84 +112,7 @@ else
     </div>
 }
 
-<!-- USER MODAL (Create / Edit) -->
-@if (_showUserModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-person me-2"></i>
-                        @(_isEditando ? "Editar Usuário" : "Novo Usuário")
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="FecharUserModal"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_erroUser))
-                    {
-                        <div class="alert alert-danger py-2" role="alert">@_erroUser</div>
-                    }
-
-                    <EditForm Model="_userModel" OnValidSubmit="SalvarUsuario">
-                        <DataAnnotationsValidator />
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Nome Completo *</label>
-                            <InputText @bind-Value="_userModel.Nome" class="form-control" />
-                            <ValidationMessage For="() => _userModel.Nome" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Email *</label>
-                            <InputText @bind-Value="_userModel.Email" class="form-control" type="email" disabled="@_isEditando" />
-                            <ValidationMessage For="() => _userModel.Email" class="text-danger small" />
-                        </div>
-
-                        @if (!_isEditando)
-                        {
-                            <div class="mb-3">
-                                <label class="form-label">Senha *</label>
-                                <InputText @bind-Value="_userModel.Senha" class="form-control" type="password" />
-                                <ValidationMessage For="() => _userModel.Senha" class="text-danger small" />
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Confirmar Senha *</label>
-                                <InputText @bind-Value="_userModel.ConfirmarSenha" class="form-control" type="password" />
-                                <ValidationMessage For="() => _userModel.ConfirmarSenha" class="text-danger small" />
-                                @if (!string.IsNullOrEmpty(ValidarConfirmacao(_userModel.ConfirmarSenha)))
-                                {
-                                    <div class="text-danger small mt-1">@ValidarConfirmacao(_userModel.ConfirmarSenha)</div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="mb-3 form-check form-switch">
-                                <InputCheckbox @bind-Value="_userModel.Ativo" class="form-check-input" id="checkAtivo" />
-                                <label class="form-check-label" for="checkAtivo">Usuário Ativo</label>
-                            </div>
-                        }
-
-                        <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-light" @onclick="FecharUserModal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_salvandoUser">
-                                @if (_salvandoUser)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                }
-                                Salvar
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- WAREHOUSES MANAGEMENT MODAL -->
+<!-- WAREHOUSES MANAGEMENT MODAL (mantido conforme solicitado) -->
 @if (_showArmazensModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
@@ -252,15 +183,7 @@ else
     private bool _carregandoPrincipal = true;
     private string _searchString = "";
 
-    // MODAL STATE - USER
-    private bool _showUserModal = false;
-    private bool _isEditando = false;
-    private bool _salvandoUser = false;
-    private string? _usuarioIdEditando;
-    private string? _erroUser;
-    private UsuarioModel _userModel = new();
-
-    // MODAL STATE - WAREHOUSE MANAGEMENT
+    // MODAL STATE - WAREHOUSE MANAGEMENT (mantido)
     private bool _showArmazensModal = false;
     private string _usuarioArmazensId = "";
     private string _usuarioArmazensNome = "";
@@ -274,9 +197,26 @@ else
         (x.Email != null && x.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
     );
 
+    private bool _wasActive = true;
+
     protected override async Task OnInitializedAsync()
     {
+        TabService.OnTabsChanged += HandleTabFocus;
         await CarregarDados();
+    }
+
+    private async void HandleTabFocus()
+    {
+        var isActive = TabService.ActiveTab?.ComponentType == typeof(Usuarios);
+        if (isActive && !_wasActive)
+        {
+            await InvokeAsync(async () =>
+            {
+                await CarregarDados();
+                StateHasChanged();
+            });
+        }
+        _wasActive = isActive;
     }
 
     private async Task CarregarDados()
@@ -292,100 +232,21 @@ else
         _carregandoPrincipal = false;
     }
 
-    // === MÉTODOS DE USUÁRIO ===
+    // === MÉTODOS DE USUÁRIO (agora via abas de formulário) ===
     private void CriarUsuario()
     {
-        _isEditando = false;
-        _usuarioIdEditando = null;
-        _userModel = new UsuarioModel();
-        _erroUser = null;
-        _showUserModal = true;
+        TabService.OpenFormTab("✚ Novo Usuário", "bi-person-plus-fill", typeof(FormUsuario), new Dictionary<string, object>
+        {
+            ["UsuarioId"] = ""
+        });
     }
 
-    private async Task EditarUsuario(ApplicationUser usuario)
+    private void EditarUsuario(ApplicationUser usuario)
     {
-        _isEditando = true;
-        _usuarioIdEditando = usuario.Id;
-        _erroUser = null;
-
-        var user = await UserManager.FindByIdAsync(usuario.Id);
-        if (user is not null)
+        TabService.OpenFormTab($"✏ Editar: {usuario.Nome}", "bi-pencil-square", typeof(FormUsuario), new Dictionary<string, object>
         {
-            _userModel = new UsuarioModel
-            {
-                Nome = user.Nome,
-                Email = user.Email ?? string.Empty,
-                Ativo = user.Ativo
-            };
-            _showUserModal = true;
-        }
-    }
-
-    private void FecharUserModal()
-    {
-        _showUserModal = false;
-    }
-
-    private string? ValidarConfirmacao(string confirmacao)
-    {
-        if (!_isEditando && confirmacao != _userModel.Senha)
-            return "As senhas não coincidem";
-        return null;
-    }
-
-    private async Task SalvarUsuario()
-    {
-        if (!_isEditando && _userModel.Senha != _userModel.ConfirmarSenha)
-        {
-            return;
-        }
-
-        _salvandoUser = true;
-        _erroUser = null;
-
-        try
-        {
-            if (_isEditando)
-            {
-                var user = await UserManager.FindByIdAsync(_usuarioIdEditando!);
-                if (user is not null)
-                {
-                    user.Nome = _userModel.Nome;
-                    user.Ativo = _userModel.Ativo;
-                    var result = await UserManager.UpdateAsync(user);
-                    if (!result.Succeeded)
-                    {
-                        _erroUser = string.Join(", ", result.Errors.Select(e => e.Description));
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                var user = new ApplicationUser
-                {
-                    UserName = _userModel.Email,
-                    Email = _userModel.Email,
-                    Nome = _userModel.Nome,
-                    Ativo = true,
-                    EmailConfirmed = true
-                };
-
-                var result = await UserManager.CreateAsync(user, _userModel.Senha);
-                if (!result.Succeeded)
-                {
-                    _erroUser = string.Join(", ", result.Errors.Select(e => e.Description));
-                    return;
-                }
-            }
-
-            _showUserModal = false;
-            await CarregarDados();
-        }
-        finally
-        {
-            _salvandoUser = false;
-        }
+            ["UsuarioId"] = usuario.Id
+        });
     }
 
     private async Task ToggleAtivo(ApplicationUser usuario)
@@ -395,11 +256,13 @@ else
         {
             user.Ativo = !user.Ativo;
             await UserManager.UpdateAsync(user);
+            var status = user.Ativo ? "ativado" : "desativado";
+            ToastService.Success($"Usuário \"{user.Nome}\" {status} com sucesso!");
             await CarregarDados();
         }
     }
 
-    // === MÉTODOS DE ARMAZÉNS DO USUÁRIO ===
+    // === MÉTODOS DE ARMAZÉNS DO USUÁRIO (modal mantido) ===
     private async Task GerenciarArmazens(ApplicationUser usuario)
     {
         _usuarioArmazensId = usuario.Id;
@@ -439,13 +302,11 @@ else
         try
         {
             await using var db = await DbFactory.CreateDbContextAsync();
-            // Remove todos os vínculos existentes
             var existentes = await db.UsuarioArmazens
                 .Where(ua => ua.UsuarioId == _usuarioArmazensId)
                 .ToListAsync();
             db.UsuarioArmazens.RemoveRange(existentes);
 
-            // Adiciona os novos vínculos selecionados
             var novos = _vinculos
                 .Where(v => v.Vinculado)
                 .Select(v => new UsuarioArmazem
@@ -459,7 +320,12 @@ else
             await db.SaveChangesAsync();
             
             _showArmazensModal = false;
+            ToastService.Success($"Armazéns de \"{_usuarioArmazensNome}\" atualizados com sucesso!");
             await CarregarDados();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao salvar armazéns: {ex.Message}");
         }
         finally
         {
@@ -468,26 +334,50 @@ else
     }
 
     // === CLASSES DE MODELO ===
-    private class UsuarioModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
-        [System.ComponentModel.DataAnnotations.MaxLength(200)]
-        public string Nome { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email é obrigatório")]
-        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Email inválido")]
-        public string Email { get; set; } = string.Empty;
-
-        public string Senha { get; set; } = string.Empty;
-        public string ConfirmarSenha { get; set; } = string.Empty;
-        public bool Ativo { get; set; } = true;
-    }
-
     private class VinculoItem
     {
         public int ArmazemId { get; set; }
         public string ArmazemNome { get; set; } = string.Empty;
         public bool Vinculado { get; set; }
         public string Role { get; set; } = "Operador";
+    }
+
+    public void Dispose()
+    {
+        TabService.OnTabsChanged -= HandleTabFocus;
+    }
+
+    private async Task Excluir(ApplicationUser usuario)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o usuário \"{usuario.Nome}\"? Esta ação não pode ser desfeita.");
+        if (!confirmado) return;
+
+        try
+        {
+            var user = await UserManager.FindByIdAsync(usuario.Id);
+            if (user is not null)
+            {
+                // Remover vínculos de armazéns primeiro
+                await using var db = await DbFactory.CreateDbContextAsync();
+                var vinculos = db.UsuarioArmazens.Where(ua => ua.UsuarioId == usuario.Id);
+                db.UsuarioArmazens.RemoveRange(vinculos);
+                await db.SaveChangesAsync();
+
+                var result = await UserManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    ToastService.Success($"Usuário \"{usuario.Nome}\" excluído com sucesso!");
+                    await CarregarDados();
+                }
+                else
+                {
+                    ToastService.Error($"Erro ao excluir usuário: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao excluir usuário: {ex.Message}");
+        }
     }
 }

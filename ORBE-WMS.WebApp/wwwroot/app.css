@@ -340,3 +340,42 @@ hr {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.25);
 }
+
+/* ===== Form Page (Tab-based forms) ===== */
+
+.form-page-container {
+    max-width: 860px;
+    margin: 0 auto;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.form-card {
+    background: var(--orbe-surface);
+    border: 1px solid var(--orbe-border);
+    border-radius: var(--orbe-radius-lg);
+    box-shadow: var(--orbe-shadow);
+    overflow: hidden;
+}
+
+.form-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--orbe-border);
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.form-card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--orbe-text);
+}
+
+.form-card-title i {
+    color: var(--orbe-primary);
+}
+
+.form-card-body {
+    padding: 1.5rem;
+}

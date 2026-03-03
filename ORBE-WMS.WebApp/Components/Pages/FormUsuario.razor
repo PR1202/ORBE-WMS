@@ -1,0 +1,211 @@
+@* Formulário de Usuário — renderizado como aba *@
+
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
+
+@inject UserManager<ApplicationUser> UserManager
+@inject TabService TabService
+@inject ToastService ToastService
+
+<PageTitle>@(_isEdit ? $"Editar: {_model.Nome}" : "Novo Usuário") - ORBE WMS</PageTitle>
+
+<div class="form-page-container">
+    <div class="form-card">
+        <div class="form-card-header">
+            <div class="form-card-title">
+                <i class="bi @(_isEdit ? "bi-pencil-square" : "bi-person-plus-fill") me-2"></i>
+                @(_isEdit ? "Editar Usuário" : "Novo Usuário")
+            </div>
+            @if (_isEdit)
+            {
+                <span class="badge bg-info text-dark">@_model.Email</span>
+            }
+        </div>
+
+        <div class="form-card-body">
+            @if (!string.IsNullOrEmpty(_erro))
+            {
+                <div class="alert alert-danger py-2" role="alert">
+                    <i class="bi bi-exclamation-triangle me-1"></i> @_erro
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="Salvar">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Nome Completo <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="_model.Nome" class="form-control form-control-lg" placeholder="Nome do usuário" />
+                        <ValidationMessage For="() => _model.Nome" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="_model.Email" class="form-control form-control-lg" type="email" placeholder="email@exemplo.com" disabled="@_isEdit" />
+                        <ValidationMessage For="() => _model.Email" class="text-danger small mt-1" />
+                    </div>
+                </div>
+
+                @if (!_isEdit)
+                {
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Senha <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.Senha" class="form-control form-control-lg" type="password" placeholder="Mínimo 6 caracteres" />
+                            <ValidationMessage For="() => _model.Senha" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Confirmar Senha <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.ConfirmarSenha" class="form-control form-control-lg" type="password" placeholder="Repita a senha" />
+                            <ValidationMessage For="() => _model.ConfirmarSenha" class="text-danger small mt-1" />
+                            @if (!string.IsNullOrEmpty(_model.ConfirmarSenha) && _model.Senha != _model.ConfirmarSenha)
+                            {
+                                <div class="text-danger small mt-1">As senhas não coincidem</div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox @bind-Value="_model.Ativo" class="form-check-input" id="formCheckAtivo" />
+                                <label class="form-check-label fw-semibold" for="formCheckAtivo">Usuário Ativo</label>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <hr class="my-4" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light px-4" @onclick="Cancelar">
+                        <i class="bi bi-x-lg me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4" disabled="@_salvando">
+                        @if (_salvando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i> Salvar
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? UsuarioId { get; set; }
+    [Parameter] public Guid TabId { get; set; }
+
+    private bool _isEdit;
+    private bool _salvando;
+    private string? _erro;
+    private UsuarioModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEdit = !string.IsNullOrEmpty(UsuarioId);
+
+        if (_isEdit)
+        {
+            var user = await UserManager.FindByIdAsync(UsuarioId!);
+            if (user is not null)
+            {
+                _model = new UsuarioModel
+                {
+                    Nome = user.Nome,
+                    Email = user.Email ?? string.Empty,
+                    Ativo = user.Ativo
+                };
+            }
+        }
+    }
+
+    private async Task Salvar()
+    {
+        if (!_isEdit && _model.Senha != _model.ConfirmarSenha)
+        {
+            _erro = "As senhas não coincidem.";
+            return;
+        }
+
+        _salvando = true;
+        _erro = null;
+
+        try
+        {
+            if (_isEdit)
+            {
+                var user = await UserManager.FindByIdAsync(UsuarioId!);
+                if (user is not null)
+                {
+                    user.Nome = _model.Nome;
+                    user.Ativo = _model.Ativo;
+                    var result = await UserManager.UpdateAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        _erro = string.Join(", ", result.Errors.Select(e => e.Description));
+                        return;
+                    }
+                    ToastService.Success($"Usuário \"{_model.Nome}\" atualizado com sucesso!");
+                }
+            }
+            else
+            {
+                var user = new ApplicationUser
+                {
+                    UserName = _model.Email,
+                    Email = _model.Email,
+                    Nome = _model.Nome,
+                    Ativo = true,
+                    EmailConfirmed = true
+                };
+
+                var result = await UserManager.CreateAsync(user, _model.Senha);
+                if (!result.Succeeded)
+                {
+                    _erro = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return;
+                }
+                ToastService.Success($"Usuário \"{_model.Nome}\" criado com sucesso!");
+            }
+
+            TabService.CloseFormAndActivateListing(TabId, typeof(Usuarios));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao salvar usuário: {ex.Message}");
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        TabService.CloseTab(TabId);
+    }
+
+    private class UsuarioModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Nome { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email é obrigatório")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Email inválido")]
+        public string Email { get; set; } = string.Empty;
+
+        public string Senha { get; set; } = string.Empty;
+        public string ConfirmarSenha { get; set; } = string.Empty;
+        public bool Ativo { get; set; } = true;
+    }
+}

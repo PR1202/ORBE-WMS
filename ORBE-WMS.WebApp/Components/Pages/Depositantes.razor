@@ -1,13 +1,18 @@
 @* Componente renderizado dentro do sistema de abas *@
+@implements IDisposable
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
+@inject TabService TabService
+@inject ToastService ToastService
+@inject IJSRuntime JS
 
 <PageTitle>Depositantes - ORBE WMS</PageTitle>
 
@@ -94,10 +99,13 @@ else
                                     <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => EditarDepositante(context)">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
-                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success")" 
+                                    <button class="btn btn-sm @(context.Ativo ? "btn-outline-danger" : "btn-outline-success") me-1" 
                                             title="@(context.Ativo ? "Desativar" : "Ativar")"
                                             @onclick="() => ToggleAtivo(context)">
                                         <i class="bi @(context.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => Excluir(context)">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -115,92 +123,15 @@ else
     </div>
 }
 
-@if (_showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-business me-2"></i>
-                        @(_isEditando ? "Editar Depositante" : "Novo Depositante")
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="_model" OnValidSubmit="Salvar">
-                        <DataAnnotationsValidator />
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Armazém *</label>
-                            <InputSelect @bind-Value="_model.ArmazemId" class="form-select">
-                                <option value="0">Selecione um armazém</option>
-                                @foreach (var a in _armazensParaDialog)
-                                {
-                                    <option value="@a.Id">@a.Nome</option>
-                                }
-                            </InputSelect>
-                            <ValidationMessage For="() => _model.ArmazemId" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Nome *</label>
-                            <InputText @bind-Value="_model.Nome" class="form-control" />
-                            <ValidationMessage For="() => _model.Nome" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">CNPJ</label>
-                            <InputText @bind-Value="_model.CNPJ" class="form-control" placeholder="00.000.000/0000-00" />
-                            <ValidationMessage For="() => _model.CNPJ" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Código Externo</label>
-                            <InputText @bind-Value="_model.CodigoExterno" class="form-control" />
-                            <ValidationMessage For="() => _model.CodigoExterno" class="text-danger small" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Endereço</label>
-                            <InputTextArea @bind-Value="_model.Endereco" class="form-control" rows="2" />
-                            <ValidationMessage For="() => _model.Endereco" class="text-danger small" />
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-light" @onclick="FecharModal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_salvando">
-                                @if (_salvando)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                }
-                                Salvar
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private List<Depositante> _depositantes = [];
     private List<Armazem> _armazens = [];
-    private List<int> _armazemIdsPermitidos = [];
-    private List<Armazem> _armazensParaDialog = [];
     private bool _carregando = true;
     private bool _isAdmin;
     private string? _userId;
     private string _searchString = "";
     private int? _armazemFiltro;
-
-    // Modal State
-    private bool _showModal = false;
-    private bool _isEditando = false;
-    private bool _salvando = false;
-    private int? _depositanteIdEditando;
-    private DepositanteModel _model = new();
+    private bool _wasActive = true;
 
     private IEnumerable<Depositante> DepositantesFiltradosEBusca => _depositantes
         .Where(d => !_armazemFiltro.HasValue || d.ArmazemId == _armazemFiltro.Value)
@@ -214,12 +145,33 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        TabService.OnTabsChanged += HandleTabFocus;
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         _userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
         _isAdmin = user.IsInRole("Admin");
 
         await CarregarDados();
+    }
+
+    private async void HandleTabFocus()
+    {
+        var isActive = TabService.ActiveTab?.ComponentType == typeof(Depositantes);
+        if (isActive && !_wasActive)
+        {
+            await InvokeAsync(async () =>
+            {
+                await CarregarDados();
+                StateHasChanged();
+            });
+        }
+        _wasActive = isActive;
+    }
+
+    public void Dispose()
+    {
+        TabService.OnTabsChanged -= HandleTabFocus;
     }
 
     private async Task CarregarDados()
@@ -234,19 +186,19 @@ else
         }
         else
         {
-            _armazemIdsPermitidos = await db.UsuarioArmazens.AsNoTracking()
+            var armazemIdsPermitidos = await db.UsuarioArmazens.AsNoTracking()
                 .Where(ua => ua.UsuarioId == _userId)
                 .Select(ua => ua.ArmazemId)
                 .ToListAsync();
 
             _armazens = await db.Armazens.AsNoTracking()
-                .Where(a => a.Ativo && _armazemIdsPermitidos.Contains(a.Id))
+                .Where(a => a.Ativo && armazemIdsPermitidos.Contains(a.Id))
                 .OrderBy(a => a.Nome)
                 .ToListAsync();
 
             _depositantes = await db.Depositantes.AsNoTracking()
                 .Include(d => d.Armazem)
-                .Where(d => _armazemIdsPermitidos.Contains(d.ArmazemId))
+                .Where(d => armazemIdsPermitidos.Contains(d.ArmazemId))
                 .OrderBy(d => d.Nome)
                 .ToListAsync();
         }
@@ -266,94 +218,20 @@ else
         }
     }
 
-    private async Task CarregarArmazensParaDialog()
+    private void CriarDepositante()
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var query = db.Armazens.AsNoTracking().Where(a => a.Ativo);
-        var armazensPermitidosIds = _armazens.Select(a => a.Id).ToList();
-        if (armazensPermitidosIds is { Count: > 0 })
+        TabService.OpenFormTab("✚ Novo Depositante", "bi-plus-circle", typeof(FormDepositante), new Dictionary<string, object>
         {
-            query = query.Where(a => armazensPermitidosIds.Contains(a.Id));
-        }
-        _armazensParaDialog = await query.OrderBy(a => a.Nome).ToListAsync();
+            ["DepositanteId"] = 0
+        });
     }
 
-    private async Task CriarDepositante()
+    private void EditarDepositante(Depositante depositante)
     {
-        await CarregarArmazensParaDialog();
-        _isEditando = false;
-        _depositanteIdEditando = null;
-        _model = new DepositanteModel();
-        
-        if (_armazemFiltro.HasValue)
+        TabService.OpenFormTab($"✏ Editar: {depositante.Nome}", "bi-pencil-square", typeof(FormDepositante), new Dictionary<string, object>
         {
-            _model.ArmazemId = _armazemFiltro.Value;
-        }
-
-        _showModal = true;
-    }
-
-    private async Task EditarDepositante(Depositante depositante)
-    {
-        await CarregarArmazensParaDialog();
-        _isEditando = true;
-        _depositanteIdEditando = depositante.Id;
-        _model = new DepositanteModel
-        {
-            ArmazemId = depositante.ArmazemId,
-            Nome = depositante.Nome,
-            CNPJ = depositante.CNPJ,
-            CodigoExterno = depositante.CodigoExterno,
-            Endereco = depositante.Endereco
-        };
-        _showModal = true;
-    }
-
-    private void FecharModal()
-    {
-        _showModal = false;
-    }
-
-    private async Task Salvar()
-    {
-        _salvando = true;
-        try
-        {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            if (_isEditando && _depositanteIdEditando.HasValue)
-            {
-                var depositante = await db.Depositantes.FindAsync(_depositanteIdEditando.Value);
-                if (depositante is not null)
-                {
-                    depositante.ArmazemId = _model.ArmazemId;
-                    depositante.Nome = _model.Nome;
-                    depositante.CNPJ = _model.CNPJ;
-                    depositante.CodigoExterno = _model.CodigoExterno;
-                    depositante.Endereco = _model.Endereco;
-                    await db.SaveChangesAsync();
-                }
-            }
-            else
-            {
-                var depositante = new Depositante
-                {
-                    ArmazemId = _model.ArmazemId,
-                    Nome = _model.Nome,
-                    CNPJ = _model.CNPJ,
-                    CodigoExterno = _model.CodigoExterno,
-                    Endereco = _model.Endereco
-                };
-                db.Depositantes.Add(depositante);
-                await db.SaveChangesAsync();
-            }
-
-            _showModal = false;
-            await CarregarDados();
-        }
-        finally
-        {
-            _salvando = false;
-        }
+            ["DepositanteId"] = depositante.Id
+        });
     }
 
     private async Task ToggleAtivo(Depositante depositante)
@@ -364,27 +242,32 @@ else
         {
             entity.Ativo = !entity.Ativo;
             await db.SaveChangesAsync();
+            var status = entity.Ativo ? "ativado" : "desativado";
+            ToastService.Success($"Depositante \"{entity.Nome}\" {status} com sucesso!");
             await CarregarDados();
         }
     }
 
-    private class DepositanteModel
+    private async Task Excluir(Depositante depositante)
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Armazém é obrigatório")]
-        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Selecione um armazém")]
-        public int ArmazemId { get; set; }
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o depositante \"{depositante.Nome}\"?");
+        if (!confirmado) return;
 
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nome é obrigatório")]
-        [System.ComponentModel.DataAnnotations.MaxLength(200)]
-        public string Nome { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.MaxLength(18)]
-        public string? CNPJ { get; set; }
-
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
-        public string? CodigoExterno { get; set; }
-
-        [System.ComponentModel.DataAnnotations.MaxLength(500)]
-        public string? Endereco { get; set; }
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var entity = await db.Depositantes.FindAsync(depositante.Id);
+            if (entity is not null)
+            {
+                db.Depositantes.Remove(entity);
+                await db.SaveChangesAsync();
+                ToastService.Success($"Depositante \"{depositante.Nome}\" excluído com sucesso!");
+                await CarregarDados();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao excluir depositante: {ex.Message}");
+        }
     }
 }
