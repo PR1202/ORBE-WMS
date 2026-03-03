@@ -1,15 +1,268 @@
 @* Componente renderizado dentro do sistema de abas *@
+@implements IDisposable
+
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject TabService TabService
+@inject ToastService ToastService
+@inject TenantService TenantService
+@inject IJSRuntime JS
 
 <PageTitle>Estoque - ORBE WMS</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-box me-2 text-success"></i>Estoque</h4>
+    <h4 class="mb-0">
+        <i class="bi bi-box me-2 text-success"></i>Estoque
+        @if (TenantService.DepositanteNome is not null)
+        {
+            <small class="text-muted ms-2 fw-normal" style="font-size: 0.75rem;">
+                @TenantService.ArmazemNome / @TenantService.DepositanteNome
+            </small>
+        }
+    </h4>
+    @if (_contextoValido)
+    {
+        <button class="btn btn-primary" @onclick="CriarItem">
+            <i class="bi bi-plus-lg me-1"></i> Novo Item
+        </button>
+    }
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body text-center py-5">
-        <i class="bi bi-box text-muted" style="font-size: 3rem;"></i>
-        <h5 class="mt-3 text-muted">Módulo de Estoque</h5>
-        <p class="text-muted">Em desenvolvimento. Este módulo permitirá visualizar e gerenciar o estoque.</p>
+@if (!_contextoValido)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Selecione um <strong>armazém</strong> e um <strong>depositante</strong> na barra superior para visualizar o estoque.
     </div>
-</div>
+}
+else if (_carregando)
+{
+    <div class="progress" style="height: 3px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated w-100" role="progressbar"></div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+            <div class="input-group" style="max-width: 350px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por código, descrição, lote..." @bind="_searchString" @bind:event="oninput" />
+            </div>
+            <span class="text-muted small">@ItensFiltrados.Count() item(ns)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th class="text-end">Qtd</th>
+                        <th>Unidade</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                        <th>Localização</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ItensFiltrados.Any())
+                    {
+                        @foreach (var item in ItensFiltrados)
+                        {
+                            <tr>
+                                <td><code>@item.CodigoProduto</code></td>
+                                <td>@item.Descricao</td>
+                                <td class="text-end fw-semibold">@item.Quantidade.ToString("N2")</td>
+                                <td>@item.UnidadeMedida</td>
+                                <td>@(item.Lote ?? "—")</td>
+                                <td>
+                                    @if (item.DataValidade.HasValue)
+                                    {
+                                        var dias = (item.DataValidade.Value - DateTime.UtcNow).Days;
+                                        <span class="@(dias < 30 ? "text-danger fw-semibold" : dias < 90 ? "text-warning" : "")">
+                                            @item.DataValidade.Value.ToString("dd/MM/yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td>@(item.Localizacao ?? "—")</td>
+                                <td>
+                                    @if (item.Ativo)
+                                    {
+                                        <span class="badge bg-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => EditarItem(item)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm @(item.Ativo ? "btn-outline-danger" : "btn-outline-success") me-1"
+                                            title="@(item.Ativo ? "Desativar" : "Ativar")"
+                                            @onclick="() => ToggleAtivo(item)">
+                                        <i class="bi @(item.Ativo ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => Excluir(item)">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">Nenhum item de estoque encontrado.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ItemEstoque> _itens = [];
+    private bool _carregando = true;
+    private string _searchString = "";
+    private bool _wasActive = true;
+
+    private bool _contextoValido =>
+        TenantService.ArmazemIdAtivo.HasValue && TenantService.DepositanteIdAtivo.HasValue;
+
+    private IEnumerable<ItemEstoque> ItensFiltrados => _itens.Where(x =>
+        string.IsNullOrWhiteSpace(_searchString) ||
+        x.CodigoProduto.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+        x.Descricao.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+        (x.Lote != null && x.Lote.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
+        (x.Localizacao != null && x.Localizacao.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+    );
+
+    protected override async Task OnInitializedAsync()
+    {
+        TabService.OnTabsChanged += HandleTabFocus;
+        TenantService.OnContextChanged += HandleContextChanged;
+
+        if (_contextoValido)
+        {
+            await CarregarDados();
+        }
+        else
+        {
+            _carregando = false;
+        }
+    }
+
+    private async void HandleTabFocus()
+    {
+        var isActive = TabService.ActiveTab?.ComponentType == typeof(Estoque);
+        if (isActive && !_wasActive && _contextoValido)
+        {
+            await InvokeAsync(async () =>
+            {
+                await CarregarDados();
+                StateHasChanged();
+            });
+        }
+        _wasActive = isActive;
+    }
+
+    private async void HandleContextChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            if (_contextoValido)
+            {
+                await CarregarDados();
+            }
+            else
+            {
+                _itens = [];
+                _carregando = false;
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async Task CarregarDados()
+    {
+        _carregando = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _itens = await db.ItensEstoque.AsNoTracking()
+            .Where(i => i.ArmazemId == TenantService.ArmazemIdAtivo!.Value
+                     && i.DepositanteId == TenantService.DepositanteIdAtivo!.Value)
+            .OrderBy(i => i.CodigoProduto)
+            .ToListAsync();
+        _carregando = false;
+    }
+
+    private void CriarItem()
+    {
+        TabService.OpenFormTab("✚ Novo Item Estoque", "bi-plus-circle", typeof(FormEstoque), new Dictionary<string, object>
+        {
+            ["ItemEstoqueId"] = 0
+        });
+    }
+
+    private void EditarItem(ItemEstoque item)
+    {
+        TabService.OpenFormTab($"✏ Editar: {item.CodigoProduto}", "bi-pencil-square", typeof(FormEstoque), new Dictionary<string, object>
+        {
+            ["ItemEstoqueId"] = item.Id
+        });
+    }
+
+    private async Task ToggleAtivo(ItemEstoque item)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var entity = await db.ItensEstoque.FindAsync(item.Id);
+        if (entity is not null)
+        {
+            entity.Ativo = !entity.Ativo;
+            await db.SaveChangesAsync();
+            var status = entity.Ativo ? "ativado" : "desativado";
+            ToastService.Success($"Item \"{entity.CodigoProduto}\" {status} com sucesso!");
+            await CarregarDados();
+        }
+    }
+
+    private async Task Excluir(ItemEstoque item)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o item \"{item.CodigoProduto} - {item.Descricao}\"?");
+        if (!confirmado) return;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var entity = await db.ItensEstoque.FindAsync(item.Id);
+            if (entity is not null)
+            {
+                db.ItensEstoque.Remove(entity);
+                await db.SaveChangesAsync();
+                ToastService.Success($"Item \"{item.CodigoProduto}\" excluído com sucesso!");
+                await CarregarDados();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao excluir item: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        TabService.OnTabsChanged -= HandleTabFocus;
+        TenantService.OnContextChanged -= HandleContextChanged;
+    }
+}

@@ -27,4 +27,5 @@ public class Depositante
 
     // Navegação
     public Armazem Armazem { get; set; } = null!;
+    public ICollection<ItemEstoque> ItensEstoque { get; set; } = [];
 }

@@ -1,0 +1,233 @@
+@* Formulário de Item de Estoque — renderizado como aba *@
+
+@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.WebApp.Data
+@using ORBE_WMS.WebApp.Services
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject TabService TabService
+@inject ToastService ToastService
+@inject TenantService TenantService
+
+<PageTitle>@(_isEdit ? $"Editar: {_model.CodigoProduto}" : "Novo Item Estoque") - ORBE WMS</PageTitle>
+
+<div class="form-page-container">
+    <div class="form-card">
+        <div class="form-card-header">
+            <div class="form-card-title">
+                <i class="bi @(_isEdit ? "bi-pencil-square" : "bi-plus-circle") me-2"></i>
+                @(_isEdit ? "Editar Item de Estoque" : "Novo Item de Estoque")
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                @if (TenantService.ArmazemNome is not null)
+                {
+                    <span class="badge bg-primary">@TenantService.ArmazemNome</span>
+                }
+                @if (TenantService.DepositanteNome is not null)
+                {
+                    <span class="badge bg-info text-dark">@TenantService.DepositanteNome</span>
+                }
+            </div>
+        </div>
+
+        <div class="form-card-body">
+            <EditForm Model="_model" OnValidSubmit="Salvar">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">Código do Produto <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="_model.CodigoProduto" class="form-control form-control-lg" placeholder="SKU / Código" />
+                        <ValidationMessage For="() => _model.CodigoProduto" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label fw-semibold">Descrição <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="_model.Descricao" class="form-control form-control-lg" placeholder="Descrição do produto" />
+                        <ValidationMessage For="() => _model.Descricao" class="text-danger small mt-1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Quantidade <span class="text-danger">*</span></label>
+                        <InputNumber @bind-Value="_model.Quantidade" class="form-control" />
+                        <ValidationMessage For="() => _model.Quantidade" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Unidade <span class="text-danger">*</span></label>
+                        <InputSelect @bind-Value="_model.UnidadeMedida" class="form-select">
+                            <option value="UN">UN - Unidade</option>
+                            <option value="CX">CX - Caixa</option>
+                            <option value="KG">KG - Quilograma</option>
+                            <option value="L">L - Litro</option>
+                            <option value="M">M - Metro</option>
+                            <option value="PC">PC - Peça</option>
+                            <option value="FD">FD - Fardo</option>
+                            <option value="PT">PT - Pacote</option>
+                            <option value="PL">PL - Palete</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.UnidadeMedida" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Lote</label>
+                        <InputText @bind-Value="_model.Lote" class="form-control" placeholder="Nº do lote" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Validade</label>
+                        <InputDate @bind-Value="_model.DataValidade" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Localização</label>
+                        <InputText @bind-Value="_model.Localizacao" class="form-control" placeholder="Rua, prateleira, posição..." />
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light px-4" @onclick="Cancelar">
+                        <i class="bi bi-x-lg me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4" disabled="@_salvando">
+                        @if (_salvando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i> Salvar
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? ItemEstoqueId { get; set; }
+    [Parameter] public Guid TabId { get; set; }
+
+    private bool _isEdit;
+    private bool _salvando;
+    private ItemEstoqueModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEdit = ItemEstoqueId.HasValue && ItemEstoqueId.Value > 0;
+
+        if (_isEdit)
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var item = await db.ItensEstoque.FindAsync(ItemEstoqueId!.Value);
+            if (item is not null)
+            {
+                _model = new ItemEstoqueModel
+                {
+                    CodigoProduto = item.CodigoProduto,
+                    Descricao = item.Descricao,
+                    Quantidade = item.Quantidade,
+                    UnidadeMedida = item.UnidadeMedida,
+                    Lote = item.Lote,
+                    DataValidade = item.DataValidade,
+                    Localizacao = item.Localizacao
+                };
+            }
+        }
+    }
+
+    private async Task Salvar()
+    {
+        _salvando = true;
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            if (_isEdit)
+            {
+                var item = await db.ItensEstoque.FindAsync(ItemEstoqueId!.Value);
+                if (item is not null)
+                {
+                    item.CodigoProduto = _model.CodigoProduto;
+                    item.Descricao = _model.Descricao;
+                    item.Quantidade = _model.Quantidade;
+                    item.UnidadeMedida = _model.UnidadeMedida;
+                    item.Lote = _model.Lote;
+                    item.DataValidade = _model.DataValidade;
+                    item.Localizacao = _model.Localizacao;
+                    await db.SaveChangesAsync();
+                    ToastService.Success($"Item \"{_model.CodigoProduto}\" atualizado com sucesso!");
+                }
+            }
+            else
+            {
+                if (!TenantService.ArmazemIdAtivo.HasValue || !TenantService.DepositanteIdAtivo.HasValue)
+                {
+                    ToastService.Error("Selecione um armazém e depositante antes de cadastrar.");
+                    return;
+                }
+
+                var item = new ItemEstoque
+                {
+                    ArmazemId = TenantService.ArmazemIdAtivo.Value,
+                    DepositanteId = TenantService.DepositanteIdAtivo.Value,
+                    CodigoProduto = _model.CodigoProduto,
+                    Descricao = _model.Descricao,
+                    Quantidade = _model.Quantidade,
+                    UnidadeMedida = _model.UnidadeMedida,
+                    Lote = _model.Lote,
+                    DataValidade = _model.DataValidade,
+                    Localizacao = _model.Localizacao
+                };
+                db.ItensEstoque.Add(item);
+                await db.SaveChangesAsync();
+                ToastService.Success($"Item \"{_model.CodigoProduto}\" cadastrado com sucesso!");
+            }
+
+            TabService.CloseFormAndActivateListing(TabId, typeof(Estoque));
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao salvar item: {ex.Message}");
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        TabService.CloseTab(TabId);
+    }
+
+    private class ItemEstoqueModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Código é obrigatório")]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string CodigoProduto { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Descrição é obrigatória")]
+        [System.ComponentModel.DataAnnotations.MaxLength(300)]
+        public string Descricao { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue, ErrorMessage = "Quantidade deve ser positiva")]
+        public decimal Quantidade { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Unidade é obrigatória")]
+        [System.ComponentModel.DataAnnotations.MaxLength(20)]
+        public string UnidadeMedida { get; set; } = "UN";
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? Lote { get; set; }
+
+        public DateTime? DataValidade { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? Localizacao { get; set; }
+    }
+}

@@ -23,4 +23,5 @@ public class Armazem
     // Navegação
     public ICollection<Depositante> Depositantes { get; set; } = [];
     public ICollection<UsuarioArmazem> Usuarios { get; set; } = [];
+    public ICollection<ItemEstoque> ItensEstoque { get; set; } = [];
 }

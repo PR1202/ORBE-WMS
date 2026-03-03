@@ -10,6 +10,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Armazem> Armazens => Set<Armazem>();
     public DbSet<Depositante> Depositantes => Set<Depositante>();
     public DbSet<UsuarioArmazem> UsuarioArmazens => Set<UsuarioArmazem>();
+    public DbSet<ItemEstoque> ItensEstoque => Set<ItemEstoque>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -43,6 +44,27 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.HasIndex(d => d.ArmazemId);
             entity.HasIndex(d => d.CNPJ);
+        });
+
+        // ItemEstoque: pertence a um Armazem e a um Depositante
+        builder.Entity<ItemEstoque>(entity =>
+        {
+            entity.HasOne(i => i.Armazem)
+                  .WithMany(a => a.ItensEstoque)
+                  .HasForeignKey(i => i.ArmazemId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(i => i.Depositante)
+                  .WithMany(d => d.ItensEstoque)
+                  .HasForeignKey(i => i.DepositanteId)
+                  .OnDelete(DeleteBehavior.Restrict); // Evitar dupla cascade
+
+            entity.HasIndex(i => i.ArmazemId);
+            entity.HasIndex(i => i.DepositanteId);
+            entity.HasIndex(i => i.CodigoProduto);
+
+            entity.Property(i => i.Quantidade)
+                  .HasPrecision(18, 4);
         });
 
         // Armazem: índice no CNPJ
