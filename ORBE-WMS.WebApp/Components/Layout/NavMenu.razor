@@ -14,12 +14,13 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
+        <div class="nav-section-label">Operações</div>
+
         <div class="nav-item px-3">
             <a class="nav-link @ActiveClass(typeof(Pages.Home))" href="/?tab=dashboard" @onclick="OpenDashboard" @onclick:preventDefault>
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
             </a>
         </div>
-
         <div class="nav-item px-3">
             <a class="nav-link @ActiveClass(typeof(Pages.Recebimento))" href="/?tab=recebimento" @onclick="OpenRecebimento" @onclick:preventDefault>
                 <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Recebimento
@@ -41,6 +42,9 @@
             </a>
         </div>
 
+        <hr class="nav-section-divider" />
+        <div class="nav-section-label">Cadastros</div>
+
         <div class="nav-item px-3">
             <a class="nav-link @ActiveClass(typeof(Pages.Depositantes))" href="/?tab=depositantes" @onclick="OpenDepositantes" @onclick:preventDefault>
                 <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Depositantes
@@ -61,6 +65,9 @@
                 </div>
             </Authorized>
         </AuthorizeView>
+
+        <hr class="nav-section-divider" />
+        <div class="nav-section-label">Conta</div>
 
         <AuthorizeView>
             <Authorized>

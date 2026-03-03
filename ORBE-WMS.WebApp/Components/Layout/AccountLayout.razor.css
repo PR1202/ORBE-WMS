@@ -3,27 +3,96 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #0D47A1 0%, #1A237E 50%, #1a1a3e 100%);
+    background: linear-gradient(135deg, #0A3A63 0%, #0F2847 35%, #0C1D35 70%, #091525 100%);
     padding: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative floating orbs */
+.account-layout::before {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, transparent 70%);
+    top: -100px;
+    right: -100px;
+    pointer-events: none;
+}
+
+.account-layout::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
+    bottom: -80px;
+    left: -80px;
+    pointer-events: none;
 }
 
 ::deep .account-card {
     width: 100%;
     max-width: 440px;
-    border-radius: 16px;
-    border: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
+    position: relative;
+    z-index: 1;
 }
 
 ::deep .account-logo {
     width: 56px;
     height: 56px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    background: linear-gradient(135deg, var(--orbe-accent, #14B8A6), var(--orbe-accent-dark, #0D9488));
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-size: 1.5rem;
-    box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
+    box-shadow: 0 4px 16px rgba(20, 184, 166, 0.3);
+    animation: logo-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes logo-glow {
+    from {
+        box-shadow: 0 4px 16px rgba(20, 184, 166, 0.2);
+    }
+
+    to {
+        box-shadow: 0 4px 24px rgba(20, 184, 166, 0.4);
+    }
+}
+
+/* Style form inputs within account layout */
+::deep .form-floating>.form-control {
+    border-radius: 10px;
+    border-color: var(--orbe-border, #E2E8F0);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+::deep .form-floating>.form-control:focus {
+    border-color: var(--orbe-accent, #14B8A6);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+::deep .btn-primary.btn-lg {
+    background: linear-gradient(135deg, var(--orbe-primary, #0F4C81) 0%, var(--orbe-primary-dark, #0A3A63) 100%);
+    border: none;
+    border-radius: 10px;
+    font-family: var(--orbe-font-display, 'DM Sans', sans-serif);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.75rem;
+    transition: all 0.2s;
+}
+
+::deep .btn-primary.btn-lg:hover {
+    box-shadow: 0 6px 20px rgba(15, 76, 129, 0.35);
+    transform: translateY(-1px);
 }

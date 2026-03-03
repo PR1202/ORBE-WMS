@@ -24,15 +24,15 @@ else
 {
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-1">Bem-vindo, @_nomeUsuario</h4>
-            <span class="text-muted small">
+            <h4 class="mb-1" style="font-size: 1.4rem;">Bem-vindo, @_nomeUsuario</h4>
+            <span class="text-muted" style="font-size: 0.8rem;">
                 @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))
             </span>
         </div>
         @if (_isAdmin)
         {
             <div>
-                <span class="badge bg-primary px-3 py-2 rounded-pill">
+                <span class="badge bg-primary px-3 py-2 rounded-pill" style="font-size: 0.7rem;">
                     <i class="bi bi-shield-fill me-1"></i> Administrador
                 </span>
             </div>
@@ -40,34 +40,30 @@ else
     </div>
 
     <!-- CARDS KPI -->
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-md-3">
-            <div class="card shadow-sm border-0 border-start border-4 border-primary h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary me-3">
-                            <i class="bi bi-building-add fs-4"></i>
-                        </div>
-                        <div>
-                            <h4 class="fw-bold mb-0">@_totalArmazens</h4>
-                            <span class="text-muted small">@(_isAdmin ? "Armazéns" : "Meus Armazéns")</span>
-                        </div>
+            <div class="kpi-card kpi-primary">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon">
+                        <i class="bi bi-building-add"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value">@_totalArmazens</div>
+                        <div class="kpi-label">@(_isAdmin ? "Armazéns" : "Meus Armazéns")</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-md-3">
-            <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success me-3">
-                            <i class="bi bi-building fs-4"></i>
-                        </div>
-                        <div>
-                            <h4 class="fw-bold mb-0">@_totalDepositantes</h4>
-                            <span class="text-muted small">Depositantes</span>
-                        </div>
+            <div class="kpi-card kpi-success">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon">
+                        <i class="bi bi-building"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value">@_totalDepositantes</div>
+                        <div class="kpi-label">Depositantes</div>
                     </div>
                 </div>
             </div>
@@ -76,32 +72,28 @@ else
         @if (_isAdmin)
         {
             <div class="col-12 col-sm-6 col-md-3">
-                <div class="card shadow-sm border-0 border-start border-4 border-info h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info me-3">
-                                <i class="bi bi-people-fill fs-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="fw-bold mb-0">@_totalUsuarios</h4>
-                                <span class="text-muted small">Usuários</span>
-                            </div>
+                <div class="kpi-card kpi-info">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="kpi-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div>
+                            <div class="kpi-value">@_totalUsuarios</div>
+                            <div class="kpi-label">Usuários</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-12 col-sm-6 col-md-3">
-                <div class="card shadow-sm border-0 border-start border-4 border-warning h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning me-3">
-                                <i class="bi bi-exclamation-triangle-fill fs-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="fw-bold mb-0">@_depositantesInativos</h4>
-                                <span class="text-muted small">Dep. Inativos</span>
-                            </div>
+                <div class="kpi-card kpi-warning">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="kpi-icon">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div>
+                            <div class="kpi-value">@_depositantesInativos</div>
+                            <div class="kpi-label">Dep. Inativos</div>
                         </div>
                     </div>
                 </div>
@@ -110,16 +102,14 @@ else
         else
         {
             <div class="col-12 col-sm-6 col-md-3">
-                <div class="card shadow-sm border-0 border-start border-4 border-info h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info me-3">
-                                <i class="bi bi-person-badge fs-4"></i>
-                            </div>
-                            <div>
-                                <h4 class="fw-bold mb-0">@_meuPapel</h4>
-                                <span class="text-muted small">Meu Papel</span>
-                            </div>
+                <div class="kpi-card kpi-accent">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="kpi-icon">
+                            <i class="bi bi-person-badge"></i>
+                        </div>
+                        <div>
+                            <div class="kpi-value" style="font-size: 1.1rem;">@_meuPapel</div>
+                            <div class="kpi-label">Meu Papel</div>
                         </div>
                     </div>
                 </div>
@@ -132,8 +122,8 @@ else
         <div class="col-12 @(_isAdmin ? "col-md-6" : "col-md-12")">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-primary mb-3">
-                        <i class="bi bi-building-add me-2"></i>@(_isAdmin ? "Armazéns Recentes" : "Meus Armazéns")
+                    <h5 class="card-title mb-3" style="font-size: 0.95rem; color: var(--orbe-primary);">
+                        <i class="bi bi-building-add me-2" style="color: var(--orbe-accent);"></i>@(_isAdmin ? "Armazéns Recentes" : "Meus Armazéns")
                     </h5>
 
                     @if (_armazens.Any())
@@ -143,12 +133,12 @@ else
                             {
                                 <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center">
-                                        <i class="bi bi-chevron-right text-primary me-3"></i>
+                                        <i class="bi bi-chevron-right me-3" style="color: var(--orbe-accent); font-size: 0.7rem;"></i>
                                         <div>
-                                            <p class="mb-0 fw-semibold">@a.Nome</p>
+                                            <p class="mb-0 fw-semibold" style="font-size: 0.875rem;">@a.Nome</p>
                                             @if (a.CNPJ is not null)
                                             {
-                                                <small class="text-muted">@a.CNPJ</small>
+                                                <small class="text-muted" style="font-size: 0.75rem;">@a.CNPJ</small>
                                             }
                                         </div>
                                     </div>
@@ -175,54 +165,54 @@ else
             {
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
-                        <h5 class="card-title text-secondary mb-3">
-                            <i class="bi bi-lightning-charge-fill me-2"></i>Acesso Rápido
+                        <h5 class="card-title mb-3" style="font-size: 0.95rem; color: var(--orbe-text-secondary);">
+                            <i class="bi bi-lightning-charge-fill me-2" style="color: var(--orbe-accent);"></i>Acesso Rápido
                         </h5>
 
                         <div class="row g-2">
                             @if (_isAdmin)
                             {
                                 <div class="col-6">
-                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirArmazens">
-                                        <i class="bi bi-plus-lg fs-4 mb-1"></i> Novo Armazém
+                                    <button class="quick-access-btn w-100" @onclick="AbrirArmazens">
+                                        <i class="bi bi-plus-lg"></i> Novo Armazém
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirUsuarios">
-                                        <i class="bi bi-person-plus-fill fs-4 mb-1"></i> Novo Usuário
+                                    <button class="quick-access-btn w-100" @onclick="AbrirUsuarios">
+                                        <i class="bi bi-person-plus-fill"></i> Novo Usuário
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirDepositantes">
-                                        <i class="bi bi-building fs-4 mb-1"></i> Depositantes
+                                    <button class="quick-access-btn w-100" @onclick="AbrirDepositantes">
+                                        <i class="bi bi-building"></i> Depositantes
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirUsuarios">
-                                        <i class="bi bi-people-fill fs-4 mb-1"></i> Usuários
+                                    <button class="quick-access-btn w-100" @onclick="AbrirUsuarios">
+                                        <i class="bi bi-people-fill"></i> Usuários
                                     </button>
                                 </div>
                             }
                             else
                             {
                                 <div class="col-6">
-                                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirDepositantes">
-                                        <i class="bi bi-building fs-4 mb-1"></i> Depositantes
+                                    <button class="quick-access-btn w-100" @onclick="AbrirDepositantes">
+                                        <i class="bi bi-building"></i> Depositantes
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirRecebimento">
-                                        <i class="bi bi-box-arrow-in-right fs-4 mb-1"></i> Recebimento
+                                    <button class="quick-access-btn w-100" @onclick="AbrirRecebimento">
+                                        <i class="bi bi-box-arrow-in-right"></i> Recebimento
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirEstoque">
-                                        <i class="bi bi-box fs-4 mb-1"></i> Estoque
+                                    <button class="quick-access-btn w-100" @onclick="AbrirEstoque">
+                                        <i class="bi bi-box"></i> Estoque
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-outline-info w-100 py-3 d-flex flex-column align-items-center" @onclick="AbrirExpedicao">
-                                        <i class="bi bi-truck fs-4 mb-1"></i> Expedição
+                                    <button class="quick-access-btn w-100" @onclick="AbrirExpedicao">
+                                        <i class="bi bi-truck"></i> Expedição
                                     </button>
                                 </div>
                             }
