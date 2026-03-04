@@ -16,36 +16,14 @@ public class DepositanteAppService
     public async Task<List<DepositanteDto>> ObterPorArmazemAsync(int armazemId)
     {
         var lista = await _repo.ObterPorArmazemAsync(armazemId);
-        return lista.Select(d => new DepositanteDto
-        {
-            Id = d.Id,
-            ArmazemId = d.ArmazemId,
-            Nome = d.Nome,
-            CNPJ = d.CNPJ,
-            CodigoExterno = d.CodigoExterno,
-            Endereco = d.Endereco,
-            Ativo = d.Ativo,
-            DataCriacao = d.DataCriacao,
-            ArmazemNome = d.Armazem?.Nome ?? string.Empty
-        }).ToList();
+        return lista.Select(MapToDto).ToList();
     }
 
     public async Task<DepositanteDto?> ObterPorIdAsync(int id)
     {
         var d = await _repo.ObterPorIdAsync(id);
         if (d is null) return null;
-        return new DepositanteDto
-        {
-            Id = d.Id,
-            ArmazemId = d.ArmazemId,
-            Nome = d.Nome,
-            CNPJ = d.CNPJ,
-            CodigoExterno = d.CodigoExterno,
-            Endereco = d.Endereco,
-            Ativo = d.Ativo,
-            DataCriacao = d.DataCriacao,
-            ArmazemNome = d.Armazem?.Nome ?? string.Empty
-        };
+        return MapToDto(d);
     }
 
     public async Task<Depositante> CriarAsync(CriarDepositanteDto dto)
@@ -79,4 +57,44 @@ public class DepositanteAppService
     {
         await _repo.RemoverAsync(id);
     }
+
+    public async Task<List<DepositanteDto>> ObterTodosAsync()
+    {
+        var lista = await _repo.ObterTodosComArmazemAsync();
+        return lista.Select(MapToDto).ToList();
+    }
+
+    public async Task<List<DepositanteDto>> ObterPorArmazensAsync(List<int> armazemIds)
+    {
+        var lista = await _repo.ObterPorArmazensAsync(armazemIds);
+        return lista.Select(MapToDto).ToList();
+    }
+
+    public async Task<bool> ToggleAtivoAsync(int id)
+    {
+        var dep = await _repo.ObterPorIdAsync(id)
+            ?? throw new InvalidOperationException($"Depositante {id} não encontrado.");
+        dep.Ativo = !dep.Ativo;
+        await _repo.AtualizarAsync(dep);
+        return dep.Ativo;
+    }
+
+    public async Task<List<DepositanteDto>> ObterAtivosPorArmazemAsync(int armazemId)
+    {
+        var lista = await _repo.ObterAtivosPorArmazemAsync(armazemId);
+        return lista.Select(MapToDto).ToList();
+    }
+
+    private static DepositanteDto MapToDto(Depositante d) => new()
+    {
+        Id = d.Id,
+        ArmazemId = d.ArmazemId,
+        Nome = d.Nome,
+        CNPJ = d.CNPJ,
+        CodigoExterno = d.CodigoExterno,
+        Endereco = d.Endereco,
+        Ativo = d.Ativo,
+        DataCriacao = d.DataCriacao,
+        ArmazemNome = d.Armazem?.Nome ?? string.Empty
+    };
 }

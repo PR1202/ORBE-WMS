@@ -76,4 +76,34 @@ public class UsuarioArmazemRepository : IUsuarioArmazemRepository
         return await db.UsuarioArmazens
             .AnyAsync(ua => ua.UsuarioId == usuarioId && ua.ArmazemId == armazemId);
     }
+
+    public async Task<List<int>> ObterArmazemIdsPorUsuarioAsync(string usuarioId)
+    {
+        using var db = _factory.CreateDbContext();
+        return await db.UsuarioArmazens
+            .Where(ua => ua.UsuarioId == usuarioId)
+            .Select(ua => ua.ArmazemId)
+            .ToListAsync();
+    }
+
+    public async Task SincronizarVinculosAsync(string usuarioId, List<UsuarioArmazem> novosVinculos)
+    {
+        using var db = _factory.CreateDbContext();
+        var existentes = await db.UsuarioArmazens
+            .Where(ua => ua.UsuarioId == usuarioId)
+            .ToListAsync();
+        db.UsuarioArmazens.RemoveRange(existentes);
+        db.UsuarioArmazens.AddRange(novosVinculos);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<List<string>> ObterRolesPorUsuarioAsync(string usuarioId)
+    {
+        using var db = _factory.CreateDbContext();
+        return await db.UsuarioArmazens
+            .Where(ua => ua.UsuarioId == usuarioId)
+            .Select(ua => ua.Role)
+            .Distinct()
+            .ToListAsync();
+    }
 }

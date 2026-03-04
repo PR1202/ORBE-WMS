@@ -1,11 +1,10 @@
 @* Formulário de Item de Estoque — renderizado como aba *@
 
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ItemEstoqueAppService EstoqueService
 @inject TabService TabService
 @inject ToastService ToastService
 @inject TenantService TenantService
@@ -123,8 +122,7 @@
 
         if (_isEdit)
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var item = await db.ItensEstoque.FindAsync(ItemEstoqueId!.Value);
+            var item = await EstoqueService.ObterPorIdAsync(ItemEstoqueId!.Value);
             if (item is not null)
             {
                 _model = new ItemEstoqueModel
@@ -146,23 +144,21 @@
         _salvando = true;
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-
             if (_isEdit)
             {
-                var item = await db.ItensEstoque.FindAsync(ItemEstoqueId!.Value);
-                if (item is not null)
+                await EstoqueService.AtualizarAsync(new AtualizarItemEstoqueDto
                 {
-                    item.CodigoProduto = _model.CodigoProduto;
-                    item.Descricao = _model.Descricao;
-                    item.Quantidade = _model.Quantidade;
-                    item.UnidadeMedida = _model.UnidadeMedida;
-                    item.Lote = _model.Lote;
-                    item.DataValidade = _model.DataValidade;
-                    item.Localizacao = _model.Localizacao;
-                    await db.SaveChangesAsync();
-                    ToastService.Success($"Item \"{_model.CodigoProduto}\" atualizado com sucesso!");
-                }
+                    Id = ItemEstoqueId!.Value,
+                    CodigoProduto = _model.CodigoProduto,
+                    Descricao = _model.Descricao,
+                    Quantidade = _model.Quantidade,
+                    UnidadeMedida = _model.UnidadeMedida,
+                    Lote = _model.Lote,
+                    DataValidade = _model.DataValidade,
+                    Localizacao = _model.Localizacao,
+                    Ativo = true
+                });
+                ToastService.Success($"Item \"{_model.CodigoProduto}\" atualizado com sucesso!");
             }
             else
             {
@@ -172,7 +168,7 @@
                     return;
                 }
 
-                var item = new ItemEstoque
+                await EstoqueService.CriarAsync(new CriarItemEstoqueDto
                 {
                     ArmazemId = TenantService.ArmazemIdAtivo.Value,
                     DepositanteId = TenantService.DepositanteIdAtivo.Value,
@@ -183,9 +179,7 @@
                     Lote = _model.Lote,
                     DataValidade = _model.DataValidade,
                     Localizacao = _model.Localizacao
-                };
-                db.ItensEstoque.Add(item);
-                await db.SaveChangesAsync();
+                });
                 ToastService.Success($"Item \"{_model.CodigoProduto}\" cadastrado com sucesso!");
             }
 

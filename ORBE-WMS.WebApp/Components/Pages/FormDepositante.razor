@@ -2,12 +2,12 @@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ArmazemAppService ArmazemService
+@inject DepositanteAppService DepositanteService
 @inject TabService TabService
 @inject ToastService ToastService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -106,7 +106,7 @@
     private bool _isEdit;
     private bool _salvando;
     private bool _carregando = true;
-    private List<Armazem> _armazens = [];
+    private List<ArmazemDto> _armazens = [];
     private DepositanteModel _model = new();
 
     protected override async Task OnInitializedAsync()
@@ -119,28 +119,18 @@
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
         var isAdmin = user.IsInRole("Admin");
 
-        await using var db = await DbFactory.CreateDbContextAsync();
-
         if (isAdmin)
         {
-            _armazens = await db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
+            _armazens = await ArmazemService.ObterAtivosAsync();
         }
         else if (userId is not null)
         {
-            var armazemIds = await db.UsuarioArmazens.AsNoTracking()
-                .Where(ua => ua.UsuarioId == userId)
-                .Select(ua => ua.ArmazemId)
-                .ToListAsync();
-
-            _armazens = await db.Armazens.AsNoTracking()
-                .Where(a => a.Ativo && armazemIds.Contains(a.Id))
-                .OrderBy(a => a.Nome)
-                .ToListAsync();
+            _armazens = await ArmazemService.ObterAtivosPorUsuarioAsync(userId);
         }
 
         if (_isEdit)
         {
-            var depositante = await db.Depositantes.FindAsync(DepositanteId!.Value);
+            var depositante = await DepositanteService.ObterPorIdAsync(DepositanteId!.Value);
             if (depositante is not null)
             {
                 _model = new DepositanteModel
@@ -162,34 +152,29 @@
         _salvando = true;
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-
             if (_isEdit)
             {
-                var depositante = await db.Depositantes.FindAsync(DepositanteId!.Value);
-                if (depositante is not null)
+                await DepositanteService.AtualizarAsync(new AtualizarDepositanteDto
                 {
-                    depositante.ArmazemId = _model.ArmazemId;
-                    depositante.Nome = _model.Nome;
-                    depositante.CNPJ = _model.CNPJ;
-                    depositante.CodigoExterno = _model.CodigoExterno;
-                    depositante.Endereco = _model.Endereco;
-                    await db.SaveChangesAsync();
-                    ToastService.Success($"Depositante \"{_model.Nome}\" atualizado com sucesso!");
-                }
+                    Id = DepositanteId!.Value,
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    CodigoExterno = _model.CodigoExterno,
+                    Endereco = _model.Endereco,
+                    Ativo = true
+                });
+                ToastService.Success($"Depositante \"{_model.Nome}\" atualizado com sucesso!");
             }
             else
             {
-                var depositante = new Depositante
+                await DepositanteService.CriarAsync(new CriarDepositanteDto
                 {
                     ArmazemId = _model.ArmazemId,
                     Nome = _model.Nome,
                     CNPJ = _model.CNPJ,
                     CodigoExterno = _model.CodigoExterno,
                     Endereco = _model.Endereco
-                };
-                db.Depositantes.Add(depositante);
-                await db.SaveChangesAsync();
+                });
                 ToastService.Success($"Depositante \"{_model.Nome}\" criado com sucesso!");
             }
 

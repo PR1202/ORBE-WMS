@@ -71,6 +71,15 @@ public class ItemEstoqueAppService
         await _repo.RemoverAsync(id);
     }
 
+    public async Task<bool> ToggleAtivoAsync(int id)
+    {
+        var item = await _repo.ObterPorIdAsync(id)
+            ?? throw new InvalidOperationException($"Item de estoque {id} não encontrado.");
+        item.Ativo = !item.Ativo;
+        await _repo.AtualizarAsync(item);
+        return item.Ativo;
+    }
+
     private static ItemEstoqueDto MapToDto(ItemEstoque i) => new()
     {
         Id = i.Id,

@@ -90,4 +90,45 @@ public class ArmazemAppService
     {
         await _repo.RemoverAsync(id);
     }
+
+    public async Task<bool> ToggleAtivoAsync(int id)
+    {
+        var armazem = await _repo.ObterPorIdAsync(id)
+            ?? throw new InvalidOperationException($"Armazém {id} não encontrado.");
+        armazem.Ativo = !armazem.Ativo;
+        await _repo.AtualizarAsync(armazem);
+        return armazem.Ativo;
+    }
+
+    public async Task<List<ArmazemDto>> ObterAtivosAsync()
+    {
+        var lista = await _repo.ObterAtivosAsync();
+        return lista.Select(a => new ArmazemDto
+        {
+            Id = a.Id,
+            Nome = a.Nome,
+            CNPJ = a.CNPJ,
+            Endereco = a.Endereco,
+            Ativo = a.Ativo,
+            DataCriacao = a.DataCriacao,
+            TotalDepositantes = a.Depositantes.Count,
+            TotalUsuarios = a.Usuarios.Count
+        }).ToList();
+    }
+
+    public async Task<List<ArmazemDto>> ObterAtivosPorUsuarioAsync(string usuarioId)
+    {
+        var lista = await _repo.ObterAtivosPorUsuarioAsync(usuarioId);
+        return lista.Select(a => new ArmazemDto
+        {
+            Id = a.Id,
+            Nome = a.Nome,
+            CNPJ = a.CNPJ,
+            Endereco = a.Endereco,
+            Ativo = a.Ativo,
+            DataCriacao = a.DataCriacao,
+            TotalDepositantes = a.Depositantes.Count,
+            TotalUsuarios = a.Usuarios.Count
+        }).ToList();
+    }
 }

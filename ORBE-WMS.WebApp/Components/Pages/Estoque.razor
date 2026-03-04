@@ -1,12 +1,11 @@
 @* Componente renderizado dentro do sistema de abas *@
 @implements IDisposable
 
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ItemEstoqueAppService EstoqueService
 @inject TabService TabService
 @inject ToastService ToastService
 @inject TenantService TenantService
@@ -134,7 +133,7 @@ else
 }
 
 @code {
-    private List<ItemEstoque> _itens = [];
+    private List<ItemEstoqueDto> _itens = [];
     private bool _carregando = true;
     private string _searchString = "";
     private bool _wasActive = true;
@@ -142,7 +141,7 @@ else
     private bool _contextoValido =>
         TenantService.ArmazemIdAtivo.HasValue && TenantService.DepositanteIdAtivo.HasValue;
 
-    private IEnumerable<ItemEstoque> ItensFiltrados => _itens.Where(x =>
+    private IEnumerable<ItemEstoqueDto> ItensFiltrados => _itens.Where(x =>
         string.IsNullOrWhiteSpace(_searchString) ||
         x.CodigoProduto.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
         x.Descricao.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
@@ -199,12 +198,9 @@ else
     private async Task CarregarDados()
     {
         _carregando = true;
-        await using var db = await DbFactory.CreateDbContextAsync();
-        _itens = await db.ItensEstoque.AsNoTracking()
-            .Where(i => i.ArmazemId == TenantService.ArmazemIdAtivo!.Value
-                     && i.DepositanteId == TenantService.DepositanteIdAtivo!.Value)
-            .OrderBy(i => i.CodigoProduto)
-            .ToListAsync();
+        _itens = await EstoqueService.ObterPorArmazemEDepositanteAsync(
+            TenantService.ArmazemIdAtivo!.Value,
+            TenantService.DepositanteIdAtivo!.Value);
         _carregando = false;
     }
 
@@ -216,7 +212,7 @@ else
         });
     }
 
-    private void EditarItem(ItemEstoque item)
+    private void EditarItem(ItemEstoqueDto item)
     {
         TabService.OpenFormTab($"✏ Editar: {item.CodigoProduto}", "bi-pencil-square", typeof(FormEstoque), new Dictionary<string, object>
         {
@@ -224,36 +220,31 @@ else
         });
     }
 
-    private async Task ToggleAtivo(ItemEstoque item)
+    private async Task ToggleAtivo(ItemEstoqueDto item)
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var entity = await db.ItensEstoque.FindAsync(item.Id);
-        if (entity is not null)
+        try
         {
-            entity.Ativo = !entity.Ativo;
-            await db.SaveChangesAsync();
-            var status = entity.Ativo ? "ativado" : "desativado";
-            ToastService.Success($"Item \"{entity.CodigoProduto}\" {status} com sucesso!");
+            var novoStatus = await EstoqueService.ToggleAtivoAsync(item.Id);
+            var status = novoStatus ? "ativado" : "desativado";
+            ToastService.Success($"Item \"{item.CodigoProduto}\" {status} com sucesso!");
             await CarregarDados();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao alterar status: {ex.Message}");
         }
     }
 
-    private async Task Excluir(ItemEstoque item)
+    private async Task Excluir(ItemEstoqueDto item)
     {
         var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o item \"{item.CodigoProduto} - {item.Descricao}\"?");
         if (!confirmado) return;
 
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var entity = await db.ItensEstoque.FindAsync(item.Id);
-            if (entity is not null)
-            {
-                db.ItensEstoque.Remove(entity);
-                await db.SaveChangesAsync();
-                ToastService.Success($"Item \"{item.CodigoProduto}\" excluído com sucesso!");
-                await CarregarDados();
-            }
+            await EstoqueService.RemoverAsync(item.Id);
+            ToastService.Success($"Item \"{item.CodigoProduto}\" excluído com sucesso!");
+            await CarregarDados();
         }
         catch (Exception ex)
         {

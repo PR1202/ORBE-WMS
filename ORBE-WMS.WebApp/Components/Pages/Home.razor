@@ -3,12 +3,11 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject DashboardAppService DashboardService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject TabService TabService
@@ -25,12 +24,12 @@ else
 {
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-1" style="font-size: 1.4rem;">Bem-vindo, @_nomeUsuario</h4>
+            <h4 class="mb-1" style="font-size: 1.4rem;">Bem-vindo, @_dashboard.NomeUsuario</h4>
             <span class="text-muted" style="font-size: 0.8rem;">
                 @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))
             </span>
         </div>
-        @if (_isAdmin)
+        @if (_dashboard.IsAdmin)
         {
             <div>
                 <span class="badge bg-primary px-3 py-2 rounded-pill" style="font-size: 0.7rem;">
@@ -49,8 +48,8 @@ else
                         <i class="bi bi-building-add"></i>
                     </div>
                     <div>
-                        <div class="kpi-value">@_totalArmazens</div>
-                        <div class="kpi-label">@(_isAdmin ? "Armazéns" : "Meus Armazéns")</div>
+                        <div class="kpi-value">@_dashboard.TotalArmazens</div>
+                        <div class="kpi-label">@(_dashboard.IsAdmin ? "Armazéns" : "Meus Armazéns")</div>
                     </div>
                 </div>
             </div>
@@ -63,14 +62,14 @@ else
                         <i class="bi bi-building"></i>
                     </div>
                     <div>
-                        <div class="kpi-value">@_totalDepositantes</div>
+                        <div class="kpi-value">@_dashboard.TotalDepositantes</div>
                         <div class="kpi-label">Depositantes</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        @if (_isAdmin)
+        @if (_dashboard.IsAdmin)
         {
             <div class="col-12 col-sm-6 col-md-3">
                 <div class="kpi-card kpi-info">
@@ -79,7 +78,7 @@ else
                             <i class="bi bi-people-fill"></i>
                         </div>
                         <div>
-                            <div class="kpi-value">@_totalUsuarios</div>
+                            <div class="kpi-value">@_dashboard.TotalUsuarios</div>
                             <div class="kpi-label">Usuários</div>
                         </div>
                     </div>
@@ -93,7 +92,7 @@ else
                             <i class="bi bi-exclamation-triangle-fill"></i>
                         </div>
                         <div>
-                            <div class="kpi-value">@_depositantesInativos</div>
+                            <div class="kpi-value">@_dashboard.DepositantesInativos</div>
                             <div class="kpi-label">Dep. Inativos</div>
                         </div>
                     </div>
@@ -109,7 +108,7 @@ else
                             <i class="bi bi-person-badge"></i>
                         </div>
                         <div>
-                            <div class="kpi-value" style="font-size: 1.1rem;">@_meuPapel</div>
+                            <div class="kpi-value" style="font-size: 1.1rem;">@_dashboard.MeuPapel</div>
                             <div class="kpi-label">Meu Papel</div>
                         </div>
                     </div>
@@ -120,17 +119,17 @@ else
 
     <div class="row g-4">
         <!-- MEUS ARMAZÉNS -->
-        <div class="col-12 @(_isAdmin ? "col-md-6" : "col-md-12")">
+        <div class="col-12 @(_dashboard.IsAdmin ? "col-md-6" : "col-md-12")">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <h5 class="card-title mb-3" style="font-size: 0.95rem; color: var(--orbe-primary);">
-                        <i class="bi bi-building-add me-2" style="color: var(--orbe-accent);"></i>@(_isAdmin ? "Armazéns Recentes" : "Meus Armazéns")
+                        <i class="bi bi-building-add me-2" style="color: var(--orbe-accent);"></i>@(_dashboard.IsAdmin ? "Armazéns Recentes" : "Meus Armazéns")
                     </h5>
 
-                    @if (_armazens.Any())
+                    @if (_dashboard.ArmazensRecentes.Any())
                     {
                         <div class="list-group list-group-flush">
-                            @foreach (var a in _armazens)
+                            @foreach (var a in _dashboard.ArmazensRecentes)
                             {
                                 <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center">
@@ -162,7 +161,7 @@ else
 
         <!-- ACESSO RÁPIDO -->
         <div class="col-12 col-md-6">
-            @if (_isAdmin || _armazens.Any())
+            @if (_dashboard.IsAdmin || _dashboard.ArmazensRecentes.Any())
             {
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
@@ -171,7 +170,7 @@ else
                         </h5>
 
                         <div class="row g-2">
-                            @if (_isAdmin)
+                            @if (_dashboard.IsAdmin)
                             {
                                 <div class="col-6">
                                     <button class="quick-access-btn w-100" @onclick="AbrirArmazens">
@@ -227,7 +226,7 @@ else
 
 @code {
     private bool _carregando = true;
-    private bool _isAdmin;
+    private DashboardDto _dashboard = new();
 
     // Abrir abas via acesso rápido
     private void AbrirArmazens() => TabService.OpenTab("Armazéns", "bi-building-add", typeof(Armazens));
@@ -236,76 +235,19 @@ else
     private void AbrirRecebimento() => TabService.OpenTab("Recebimento", "bi-box-arrow-in-right", typeof(Recebimento));
     private void AbrirEstoque() => TabService.OpenTab("Estoque", "bi-box", typeof(Estoque));
     private void AbrirExpedicao() => TabService.OpenTab("Expedição", "bi-truck", typeof(Expedicao));
-    private string? _userId;
-    private string _nomeUsuario = "";
-    private string _meuPapel = "-";
-
-    private int _totalArmazens;
-    private int _totalDepositantes;
-    private int _totalUsuarios;
-    private int _depositantesInativos;
-
-    private List<Armazem> _armazens = [];
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        _userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        _isAdmin = user.IsInRole("Admin");
-        _nomeUsuario = user.Identity?.Name ?? "Usuário";
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isAdmin = user.IsInRole("Admin");
 
-        await using var db = await DbFactory.CreateDbContextAsync();
-
-        // Buscar nome real do usuário
-        if (_userId is not null)
+        if (userId is not null)
         {
-            var appUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _userId);
-            if (appUser is not null)
-            {
-                _nomeUsuario = appUser.Nome;
-            }
-        }
-
-        if (_isAdmin)
-        {
-            _totalArmazens = await db.Armazens.AsNoTracking().CountAsync(a => a.Ativo);
-            _totalDepositantes = await db.Depositantes.AsNoTracking().CountAsync(d => d.Ativo);
-            _depositantesInativos = await db.Depositantes.AsNoTracking().CountAsync(d => !d.Ativo);
-            _totalUsuarios = await db.Users.AsNoTracking().CountAsync();
-            _armazens = await db.Armazens.AsNoTracking()
-                .OrderByDescending(a => a.DataCriacao)
-                .Take(5)
-                .ToListAsync();
-        }
-        else
-        {
-            var meusArmazemIds = await db.UsuarioArmazens.AsNoTracking()
-                .Where(ua => ua.UsuarioId == _userId)
-                .Select(ua => ua.ArmazemId)
-                .ToListAsync();
-
-            _totalArmazens = meusArmazemIds.Count;
-            _totalDepositantes = await db.Depositantes.AsNoTracking()
-                .CountAsync(d => d.Ativo && meusArmazemIds.Contains(d.ArmazemId));
-
-            _armazens = await db.Armazens.AsNoTracking()
-                .Where(a => meusArmazemIds.Contains(a.Id))
-                .OrderBy(a => a.Nome)
-                .ToListAsync();
-
-            // Buscar papel do usuário (pegar o mais relevante)
-            var papeis = await db.UsuarioArmazens.AsNoTracking()
-                .Where(ua => ua.UsuarioId == _userId)
-                .Select(ua => ua.Role)
-                .Distinct()
-                .ToListAsync();
-            _meuPapel = papeis.Count switch
-            {
-                0 => "Sem acesso",
-                1 => papeis[0],
-                _ => string.Join(" / ", papeis)
-            };
+            _dashboard = isAdmin
+                ? await DashboardService.ObterDashboardAdminAsync(userId)
+                : await DashboardService.ObterDashboardUsuarioAsync(userId);
         }
 
         _carregando = false;

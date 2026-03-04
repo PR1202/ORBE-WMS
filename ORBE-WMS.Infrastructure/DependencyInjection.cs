@@ -24,11 +24,14 @@ public static class DependencyInjection
         services.AddScoped<IDepositanteRepository, DepositanteRepository>();
         services.AddScoped<IItemEstoqueRepository, ItemEstoqueRepository>();
         services.AddScoped<IUsuarioArmazemRepository, UsuarioArmazemRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
         // Application Services
         services.AddScoped<ArmazemAppService>();
         services.AddScoped<DepositanteAppService>();
         services.AddScoped<ItemEstoqueAppService>();
+        services.AddScoped<DashboardAppService>();
+        services.AddScoped<UsuarioArmazemAppService>();
 
         return services;
     }

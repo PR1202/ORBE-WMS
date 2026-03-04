@@ -1,16 +1,16 @@
 @implements IDisposable
 
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
 @inject TenantService TenantService
 @inject TabService TabService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ArmazemAppService ArmazemService
+@inject DepositanteAppService DepositanteService
 
 <div class="tenant-selector">
     <div class="tenant-dropdown-group">
@@ -49,8 +49,8 @@
 </div>
 
 @code {
-    private List<ArmazemItem> _armazens = [];
-    private List<DepositanteItem> _depositantes = [];
+    private List<ArmazemDto> _armazens = [];
+    private List<DepositanteDto> _depositantes = [];
     private int _selectedArmazemId;
     private int _selectedDepositanteId;
     private bool _loaded;
@@ -89,44 +89,23 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        await using var db = await DbFactory.CreateDbContextAsync();
-
         if (user.IsInRole("Admin"))
         {
-            // Admin vê todos os armazéns ativos
-            _armazens = await db.Armazens
-                .Where(a => a.Ativo)
-                .OrderBy(a => a.Nome)
-                .Select(a => new ArmazemItem { Id = a.Id, Nome = a.Nome })
-                .ToListAsync();
+            _armazens = await ArmazemService.ObterAtivosAsync();
         }
         else
         {
-            // Usuário comum vê apenas armazéns vinculados
-            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is not null)
             {
-                _armazens = await db.UsuarioArmazens
-                    .Where(ua => ua.UsuarioId == userId)
-                    .Include(ua => ua.Armazem)
-                    .Where(ua => ua.Armazem.Ativo)
-                    .OrderBy(ua => ua.Armazem.Nome)
-                    .Select(ua => new ArmazemItem { Id = ua.Armazem.Id, Nome = ua.Armazem.Nome })
-                    .ToListAsync();
+                _armazens = await ArmazemService.ObterAtivosPorUsuarioAsync(userId);
             }
         }
     }
 
     private async Task CarregarDepositantesAsync(int armazemId)
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-
-        _depositantes = await db.Depositantes
-            .Where(d => d.ArmazemId == armazemId && d.Ativo)
-            .OrderBy(d => d.Nome)
-            .Select(d => new DepositanteItem { Id = d.Id, Nome = d.Nome })
-            .ToListAsync();
-
+        _depositantes = await DepositanteService.ObterAtivosPorArmazemAsync(armazemId);
         _selectedDepositanteId = _depositantes.FirstOrDefault()?.Id ?? 0;
     }
 
@@ -190,19 +169,5 @@
     public void Dispose()
     {
         // Nenhuma assinatura de eventos neste componente
-    }
-
-    // ── DTOs internos ──
-
-    private class ArmazemItem
-    {
-        public int Id { get; set; }
-        public string Nome { get; set; } = "";
-    }
-
-    private class DepositanteItem
-    {
-        public int Id { get; set; }
-        public string Nome { get; set; } = "";
     }
 }

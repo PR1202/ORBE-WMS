@@ -1,13 +1,11 @@
 @* Componente renderizado dentro do sistema de abas *@
 @implements IDisposable
 
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ArmazemAppService ArmazemService
 @inject TabService TabService
 @inject ToastService ToastService
 @inject IJSRuntime JS
@@ -97,12 +95,12 @@ else
 }
 
 @code {
-    private List<Armazem> _armazens = [];
+    private List<ArmazemDto> _armazens = [];
     private bool _carregando = true;
     private string _searchString = "";
     private bool _wasActive = true;
 
-    private IEnumerable<Armazem> ArmazensFiltrados => _armazens.Where(x =>
+    private IEnumerable<ArmazemDto> ArmazensFiltrados => _armazens.Where(x =>
         string.IsNullOrWhiteSpace(_searchString) ||
         x.Nome.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
         (x.CNPJ != null && x.CNPJ.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
@@ -137,8 +135,7 @@ else
     private async Task CarregarDados()
     {
         _carregando = true;
-        await using var db = await DbFactory.CreateDbContextAsync();
-        _armazens = await db.Armazens.AsNoTracking().OrderBy(a => a.Nome).ToListAsync();
+        _armazens = await ArmazemService.ObterTodosAsync();
         _carregando = false;
     }
 
@@ -150,7 +147,7 @@ else
         });
     }
 
-    private void EditarArmazem(Armazem armazem)
+    private void EditarArmazem(ArmazemDto armazem)
     {
         TabService.OpenFormTab($"✏ Editar: {armazem.Nome}", "bi-pencil-square", typeof(FormArmazem), new Dictionary<string, object>
         {
@@ -158,35 +155,31 @@ else
         });
     }
 
-    private async Task ToggleAtivo(Armazem armazem)
+    private async Task ToggleAtivo(ArmazemDto armazem)
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var entity = await db.Armazens.FindAsync(armazem.Id);
-        if (entity is not null)
+        try
         {
-            entity.Ativo = !entity.Ativo;
-            await db.SaveChangesAsync();
-            var status = entity.Ativo ? "ativado" : "desativado";
-            ToastService.Success($"Armazém \"{entity.Nome}\" {status} com sucesso!");
+            var novoStatus = await ArmazemService.ToggleAtivoAsync(armazem.Id);
+            var status = novoStatus ? "ativado" : "desativado";
+            ToastService.Success($"Armazém \"{armazem.Nome}\" {status} com sucesso!");
             await CarregarDados();
         }
+        catch (Exception ex)
+        {
+            ToastService.Error($"Erro ao alterar status: {ex.Message}");
+        }
     }
-    private async Task Excluir(Armazem armazem)
+
+    private async Task Excluir(ArmazemDto armazem)
     {
         var confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir o armazém \"{armazem.Nome}\"? Depositantes e vínculos de usuários serão removidos.");
         if (!confirmado) return;
 
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var entity = await db.Armazens.FindAsync(armazem.Id);
-            if (entity is not null)
-            {
-                db.Armazens.Remove(entity);
-                await db.SaveChangesAsync();
-                ToastService.Success($"Armazém \"{armazem.Nome}\" excluído com sucesso!");
-                await CarregarDados();
-            }
+            await ArmazemService.RemoverAsync(armazem.Id);
+            ToastService.Success($"Armazém \"{armazem.Nome}\" excluído com sucesso!");
+            await CarregarDados();
         }
         catch (Exception ex)
         {

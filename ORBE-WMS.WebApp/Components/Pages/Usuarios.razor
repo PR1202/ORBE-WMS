@@ -3,13 +3,12 @@
 
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.EntityFrameworkCore
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
+@inject UsuarioArmazemAppService UsuarioArmazemService
 @inject TabService TabService
 @inject ToastService ToastService
 @inject IJSRuntime JS
@@ -190,7 +189,7 @@ else
     private string _usuarioArmazensNome = "";
     private bool _carregandoArmazens = false;
     private bool _salvandoArmazens = false;
-    private List<VinculoItem> _vinculos = [];
+    private List<VinculoArmazemDto> _vinculos = [];
 
     private IEnumerable<ApplicationUser> UsuariosFiltrados => _usuarios.Where(x =>
         string.IsNullOrWhiteSpace(_searchString) ||
@@ -223,13 +222,7 @@ else
     private async Task CarregarDados()
     {
         _carregandoPrincipal = true;
-        await using var db = await DbFactory.CreateDbContextAsync();
-        _usuarios = await db.Users
-            .AsNoTracking()
-            .Include(u => u.Armazens)
-                .ThenInclude(ua => ua.Armazem)
-            .OrderBy(u => u.Nome)
-            .ToListAsync();
+        _usuarios = await UsuarioArmazemService.ObterTodosUsuariosComArmazensAsync();
         _carregandoPrincipal = false;
     }
 
@@ -271,23 +264,7 @@ else
         _showArmazensModal = true;
         _carregandoArmazens = true;
 
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var armazensAll = await db.Armazens.AsNoTracking().Where(a => a.Ativo).OrderBy(a => a.Nome).ToListAsync();
-        var vinculosExistentes = await db.UsuarioArmazens.AsNoTracking()
-            .Where(ua => ua.UsuarioId == usuario.Id)
-            .ToListAsync();
-
-        _vinculos = armazensAll.Select(a =>
-        {
-            var existente = vinculosExistentes.FirstOrDefault(v => v.ArmazemId == a.Id);
-            return new VinculoItem
-            {
-                ArmazemId = a.Id,
-                ArmazemNome = a.Nome,
-                Vinculado = existente is not null,
-                Role = existente?.Role ?? "Operador"
-            };
-        }).ToList();
+        _vinculos = await UsuarioArmazemService.ObterVinculosParaGerenciamentoAsync(usuario.Id);
 
         _carregandoArmazens = false;
     }
@@ -302,23 +279,7 @@ else
         _salvandoArmazens = true;
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var existentes = await db.UsuarioArmazens
-                .Where(ua => ua.UsuarioId == _usuarioArmazensId)
-                .ToListAsync();
-            db.UsuarioArmazens.RemoveRange(existentes);
-
-            var novos = _vinculos
-                .Where(v => v.Vinculado)
-                .Select(v => new UsuarioArmazem
-                {
-                    UsuarioId = _usuarioArmazensId,
-                    ArmazemId = v.ArmazemId,
-                    Role = v.Role
-                });
-            db.UsuarioArmazens.AddRange(novos);
-
-            await db.SaveChangesAsync();
+            await UsuarioArmazemService.SincronizarVinculosAsync(_usuarioArmazensId, _vinculos);
             
             _showArmazensModal = false;
             ToastService.Success($"Armazéns de \"{_usuarioArmazensNome}\" atualizados com sucesso!");
@@ -332,15 +293,6 @@ else
         {
             _salvandoArmazens = false;
         }
-    }
-
-    // === CLASSES DE MODELO ===
-    private class VinculoItem
-    {
-        public int ArmazemId { get; set; }
-        public string ArmazemNome { get; set; } = string.Empty;
-        public bool Vinculado { get; set; }
-        public string Role { get; set; } = "Operador";
     }
 
     public void Dispose()
@@ -359,10 +311,7 @@ else
             if (user is not null)
             {
                 // Remover vínculos de armazéns primeiro
-                await using var db = await DbFactory.CreateDbContextAsync();
-                var vinculos = db.UsuarioArmazens.Where(ua => ua.UsuarioId == usuario.Id);
-                db.UsuarioArmazens.RemoveRange(vinculos);
-                await db.SaveChangesAsync();
+                await UsuarioArmazemService.SincronizarVinculosAsync(usuario.Id, []);
 
                 var result = await UserManager.DeleteAsync(user);
                 if (result.Succeeded)

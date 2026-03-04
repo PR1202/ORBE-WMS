@@ -1,11 +1,10 @@
 @* Formulário de Armazém — renderizado como aba *@
 
-@using Microsoft.EntityFrameworkCore
-@using ORBE_WMS.Domain.Entities
-@using ORBE_WMS.Infrastructure.Persistence
+@using ORBE_WMS.Application.DTOs
+@using ORBE_WMS.Application.Services
 @using ORBE_WMS.WebApp.Services
 
-@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ArmazemAppService ArmazemService
 @inject TabService TabService
 @inject ToastService ToastService
 
@@ -81,8 +80,7 @@
 
         if (_isEdit)
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var armazem = await db.Armazens.FindAsync(ArmazemId!.Value);
+            var armazem = await ArmazemService.ObterPorIdAsync(ArmazemId!.Value);
             if (armazem is not null)
             {
                 _model = new ArmazemModel
@@ -100,30 +98,26 @@
         _salvando = true;
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-
             if (_isEdit)
             {
-                var armazem = await db.Armazens.FindAsync(ArmazemId!.Value);
-                if (armazem is not null)
+                await ArmazemService.AtualizarAsync(new AtualizarArmazemDto
                 {
-                    armazem.Nome = _model.Nome;
-                    armazem.CNPJ = _model.CNPJ;
-                    armazem.Endereco = _model.Endereco;
-                    await db.SaveChangesAsync();
-                    ToastService.Success($"Armazém \"{_model.Nome}\" atualizado com sucesso!");
-                }
+                    Id = ArmazemId!.Value,
+                    Nome = _model.Nome,
+                    CNPJ = _model.CNPJ,
+                    Endereco = _model.Endereco,
+                    Ativo = true
+                });
+                ToastService.Success($"Armazém \"{_model.Nome}\" atualizado com sucesso!");
             }
             else
             {
-                var armazem = new Armazem
+                await ArmazemService.CriarAsync(new CriarArmazemDto
                 {
                     Nome = _model.Nome,
                     CNPJ = _model.CNPJ,
                     Endereco = _model.Endereco
-                };
-                db.Armazens.Add(armazem);
-                await db.SaveChangesAsync();
+                });
                 ToastService.Success($"Armazém \"{_model.Nome}\" criado com sucesso!");
             }
 
